@@ -1,3 +1,5 @@
+#!/home/alexh/anaconda3/envs/arepo/bin/python
+
 import numpy as np
 import calcGrid
 from gadget import gadget_readsnap
