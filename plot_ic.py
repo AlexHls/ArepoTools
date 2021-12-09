@@ -3,7 +3,7 @@
 import sys
 import os
 import glob
-import subprocess
+import argparse
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,12 +19,13 @@ def plot_ic(
     value,
     vrange,
     scale,
-    boxsize=0.3,
+    boxsize=1e10,
     scale_center=0.80,
     axes=[0, 1],
     logplot=True,
     clean=False,
     numthreads=4,
+    proj_fact=0.5,
 ):
     filename_dict = {
         "rho": "density",
@@ -65,8 +66,9 @@ def plot_ic(
             axes=axes,
             logplot=logplot,
             colorbar=True,
-            box=[boxsize * rsol, boxsize * rsol],
+            box=[boxsize, boxsize],
             proj=True,
+            proj_fact=proj_fact,
             numthreads=numthreads,
             center=s.centerofmass(),
             cmap="cescale",
@@ -78,8 +80,9 @@ def plot_ic(
             logplot=logplot,
             colorbar=True,
             vrange=vrange,
-            box=[boxsize * rsol, boxsize * rsol],
+            box=[boxsize, boxsize],
             proj=True,
+            proj_fact=proj_fact,
             numthreads=numthreads,
             center=s.centerofmass(),
             cmap="cescale",
@@ -103,14 +106,14 @@ def plot_ic(
                 scale_pos[1],
                 linewidth=2,
                 color="w",
-                label=r"$" + str(scale / rsol) + "R_\odot$",
+                label=r"${:.4f} R_\odot$".format(scale/rsol),
                 transform=ax[0].transAxes,
             )
         )
         ax[0].text(
             np.mean(scale_pos[0]),
             np.mean(scale_pos[1]),
-            r"$" + str(scale / rsol) + "\,R_\odot$",
+            r"${:.4f}\,R_\odot$".format(scale/rsol),
             verticalalignment="bottom",
             horizontalalignment="center",
             transform=ax[0].transAxes,
@@ -151,10 +154,12 @@ def main(
     value,
     vrange=None,
     axes=[0, 1],
-    boxsize=0.2,
+    boxsize=1e10,
     logplot=True,
     clean=False,
     scale=None,
+    proj_fact=0.5,
+    numthreads=0.5,
 ):
 
     units_dict = {
@@ -178,13 +183,21 @@ def main(
         return
 
     if scale is None:
-        scale = boxsize / 5 * rsol
+        scale = 0.05 * boxsize
 
     rcParams["font.family"] = "Roboto"
 
     print("Plotting value", value)
 
-    plot_ic(file, value, vrange, scale)
+    plot_ic(
+        file,
+        value,
+        vrange,
+        scale,
+        proj_fact=proj_fact,
+        numthreads=numthreads,
+        boxsize=boxsize,
+    )
 
     print("Finished plotting value", value)
 
@@ -193,14 +206,50 @@ def main(
 
 if __name__ == "__main__":
 
-    file = sys.argv[1]
+    parser = argparse.ArgumentParser()
 
-    if not os.path.exists(file):
+    parser.add_argument("file", help="Path to snapshot or initial condition file")
+    parser.add_argument(
+        "-v",
+        "--values",
+        help="Value(s) to plot. Generates a separate plot for each given keyword. Default: rho.",
+        default="rho",
+        nargs="+",
+    )
+    parser.add_argument(
+        "-b",
+        "--boxsize",
+        help="Size of the box in cm. Default: 1e10.",
+        type=float,
+        default=1e10,
+    )
+    parser.add_argument(
+        "-p",
+        "--proj_fact",
+        help="Projection factor for plotting. Default: 0.5",
+        type=float,
+        default=0.5,
+    )
+    parser.add_argument(
+        "-n",
+        "--numthreads",
+        help="Number of threads used for tree walk. Default: 4.",
+        type=int,
+        default=4,
+    )
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.file):
         sys.exit("Specified file does not exist! Aborting...")
 
-    values = sys.argv[2:]
-
-    for value in values:
-        main(file, value)
+    for value in args.values:
+        main(
+            args.file,
+            value,
+            boxsize=args.boxsize,
+            proj_fact=args.proj_fact,
+            numthreads=args.numthreads,
+        )
 
     print("---FINISHED PLOTTING INITIAL CONDITIONS---")
