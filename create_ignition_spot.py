@@ -30,7 +30,7 @@ def create_ignition_spot(
     temp=3e9,
     ign_rad=0,
     ign_phi=0,
-    ign_theta=0,
+    ign_theta=90,
     num_ignition_cells=100,
     outname=None,
     eos_file=None,
@@ -60,12 +60,16 @@ def create_ignition_spot(
     # Convert coordinates into center of mass frame
     pos_com = np.array(s.data["pos"] - s.centerofmass())
 
+    # Convert angles from degree into radians
+    ign_phi_radian = ign_phi * np.pi / 180.
+    ign_theta_radian = ign_theta * np.pi / 180.
+
     # Calculate cartesian coordinates of desired ignition spot
     pos_ign = np.array(
         [
-            ign_rad * np.cos(ign_phi) * np.sin(ign_theta),
-            ign_rad * np.sin(ign_phi) * np.sin(ign_theta),
-            ign_rad * np.cos(ign_theta),
+            ign_rad * np.cos(ign_phi_radian) * np.sin(ign_theta_radian),
+            ign_rad * np.sin(ign_phi_radian) * np.sin(ign_theta_radian),
+            ign_rad * np.cos(ign_theta_radian),
         ]
     )
 
@@ -143,16 +147,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         "--phi",
-        help="Polar angle of the ignition center to the center of mass. Refers to spherical coordinates. Default: 0",
+        help="Polar angle of the ignition center to the center of mass in degree. Refers to spherical coordinates. Default: 0",
         type=float,
         default=0,
     )
     parser.add_argument(
         "-t",
         "--theta",
-        help="Azimuthal angle of the ignition center to the center of mass. Refers to spherical coordinates. Default: 0",
+        help="Azimuthal angle of the ignition center to the center of mass in degree. Refers to spherical coordinates. Default: 90",
         type=float,
-        default=0,
+        default=90,
     )
 
     args = parser.parse_args()
