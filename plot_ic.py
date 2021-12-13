@@ -139,14 +139,14 @@ def plot_ic(
         fig.delxes(ax[1])
         ax[0].set_position([0, 0, 1, 1])
         fig.savefig(
-            file.relace(".hdf5", "_%s.%s" % (filename_dict[value]), fileformat),
+            file.relace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
             dpi=600,
             pad_inches=0,
             bbox_inches="tight",
         )
     else:
         fig.savefig(
-            file.replace(".hdf5", "_%s.%s" % (filename_dict[value]), fileformat),
+            file.replace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
             dpi=600,
         )
 
