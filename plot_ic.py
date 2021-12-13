@@ -26,6 +26,7 @@ def plot_ic(
     clean=False,
     numthreads=4,
     proj_fact=0.5,
+    fileformat="png"
 ):
     filename_dict = {
         "rho": "density",
@@ -60,6 +61,11 @@ def plot_ic(
 
     s = gadget_snap.gadget_snapshot(file, hdf5=True, quiet=True, lazy_load=True)
 
+    if proj_fact == 0.0:
+        proj=False,
+    else:
+        proj=True
+
     if vrange == None:
         pc = s.plot_Aslice(
             value,
@@ -67,7 +73,7 @@ def plot_ic(
             logplot=logplot,
             colorbar=True,
             box=[boxsize, boxsize],
-            proj=True,
+            proj=proj,
             proj_fact=proj_fact,
             numthreads=numthreads,
             center=s.centerofmass(),
@@ -81,7 +87,7 @@ def plot_ic(
             colorbar=True,
             vrange=vrange,
             box=[boxsize, boxsize],
-            proj=True,
+            proj=proj,
             proj_fact=proj_fact,
             numthreads=numthreads,
             center=s.centerofmass(),
@@ -133,14 +139,14 @@ def plot_ic(
         fig.delxes(ax[1])
         ax[0].set_position([0, 0, 1, 1])
         fig.savefig(
-            file.relace(".hdf5", "_%s.pdf" % filename_dict[value]),
+            file.relace(".hdf5", "_%s.%s" % (filename_dict[value]), fileformat),
             dpi=600,
             pad_inches=0,
             bbox_inches="tight",
         )
     else:
         fig.savefig(
-            file.replace(".hdf5", "_%s.pdf" % filename_dict[value]),
+            file.replace(".hdf5", "_%s.%s" % (filename_dict[value]), fileformat),
             dpi=600,
         )
 
@@ -160,6 +166,7 @@ def main(
     scale=None,
     proj_fact=0.5,
     numthreads=0.5,
+    fileformat="pdf",
 ):
 
     units_dict = {
@@ -226,7 +233,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         "--proj_fact",
-        help="Projection factor for plotting. Default: 0.5",
+        help="Projection factor for plotting. If set to 0.0, projection will be set to false. Default: 0.5",
         type=float,
         default=0.5,
     )
@@ -237,6 +244,12 @@ if __name__ == "__main__":
         type=int,
         default=4,
     )
+    parser.add_argument(
+            "-f",
+            "--fileformat",
+            help="Fileformat for saved figure. Needs to be a format supported by matplotlib. Default: pdf",
+            default="pdf",
+            )
 
     args = parser.parse_args()
 
@@ -250,6 +263,7 @@ if __name__ == "__main__":
             boxsize=args.boxsize,
             proj_fact=args.proj_fact,
             numthreads=args.numthreads,
+            fileformat=args.fileformat,
         )
 
     print("---FINISHED PLOTTING INITIAL CONDITIONS---")
