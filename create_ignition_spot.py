@@ -1,4 +1,4 @@
-#!/home/alexh/anaconda3/envs/arepo/bin/python
+#!/usr/bin/env python
 
 import sys
 import os
