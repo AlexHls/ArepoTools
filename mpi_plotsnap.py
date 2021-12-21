@@ -60,6 +60,7 @@ def plot_ic(
     proj_fact=0.5,
     fileformat="png",
     savepath="./movie",
+    redo=False,
 ):
     filename_dict = {
         "rho": "density",
@@ -91,6 +92,16 @@ def plot_ic(
         "xnuc00": "He fraction",
         "xnuc01": "C fraction",
     }
+
+    savename = os.path.join(
+        savepath,
+        os.path.basename(file).replace(
+            ".hdf5", "_%s.%s" % (filename_dict[value], fileformat)
+        ),
+    )
+    if os.path.exists(savename) and not redo:
+        print("%s already exists and --redo flag not set. Skipping..." % savename)
+        return None
 
     s = gadget_snap.gadget_snapshot(file, hdf5=True, quiet=True, lazy_load=True)
 
@@ -172,24 +183,14 @@ def plot_ic(
         fig.delxes(ax[1])
         ax[0].set_position([0, 0, 1, 1])
         fig.savefig(
-            os.path.join(
-                savepath,
-                os.path.basename(file).replace(
-                    ".hdf5", "_%s.%s" % (filename_dict[value], fileformat)
-                ),
-            ),
+            savename,
             dpi=600,
             pad_inches=0,
             bbox_inches="tight",
         )
     else:
         fig.savefig(
-            os.path.join(
-                savepath,
-                os.path.basename(file).replace(
-                    ".hdf5", "_%s.%s" % (filename_dict[value], fileformat)
-                ),
-            ),
+            savename,
             dpi=600,
         )
 
@@ -213,6 +214,7 @@ def main(
     numthreads=1,
     fileformat="pdf",
     savepath="./movie",
+    redo=False,
 ):
 
     units_dict = {
@@ -251,6 +253,7 @@ def main(
         numthreads=numthreads,
         boxsize=boxsize,
         savepath=savepath,
+        redo=redo,
     )
 
     print("Finished plotting value", value)
@@ -315,6 +318,12 @@ if __name__ == "__main__":
         default="snapshot_",
     )
     parser.add_argument(
+        "-r",
+        "--redo",
+        help="If set, all images will be created from scratch. Default: False",
+        action="store_true",
+    )
+    parser.add_argument(
         "--framerate",
         help="Framerate of movie. Default: 25.",
         type=int,
@@ -360,6 +369,7 @@ if __name__ == "__main__":
                         numthreads=args.numthreads,
                         fileformat=args.fileformat,
                         savepath=args.savepath,
+                        redo=args.redo,
                     )
     else:
         for value in args.values:
@@ -372,6 +382,7 @@ if __name__ == "__main__":
                 numthreads=args.numthreads,
                 fileformat=args.fileformat,
                 savepath=args.savepath,
+                redo=args.redo,
             )
 
     mpi_barrier()
