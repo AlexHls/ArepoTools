@@ -144,7 +144,9 @@ def plot_ic(
         fig.savefig(
             os.path.join(
                 savepath,
-                file.replace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
+                os.path.basename(file).replace(
+                    ".hdf5", "_%s.%s" % (filename_dict[value], fileformat)
+                ),
             ),
             dpi=600,
             pad_inches=0,
@@ -154,7 +156,9 @@ def plot_ic(
         fig.savefig(
             os.path.join(
                 savepath,
-                file.replace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
+                os.path.basename(file).replace(
+                    ".hdf5", "_%s.%s" % (filename_dict[value], fileformat)
+                ),
             ),
             dpi=600,
         )
