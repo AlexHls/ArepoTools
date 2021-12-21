@@ -8,12 +8,42 @@ import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
+import ffmpeg
 
 from loadmodules import *
 import gadget_snap
 from const import rsol, msol
 from matplotlib import rcParams
 from parallel_decorators import is_master, mpi_barrier, mpi_size, vectorize_parallel
+
+
+def make_movie(
+    value, snapbase="snapshot_", pngpath="./movies", fileformat="png", framerate=25
+):
+    filename_dict = {
+        "rho": "density",
+        "bfld": "bfld",
+        "pass00": "pass00",
+        "mass": "mass",
+        "vel": "vel",
+        "mach": "mach",
+        "pres": "pres",
+        "pb": "pb",
+        "temp": "temp",
+        "u": "u",
+        "pass01": "pass01",
+        "xnuc00": "Hefrac",
+        "xnuc01": "Cfrac",
+    }
+    mov_name = os.path.join(pngpath, "%s_movie.mp4" % filename_dict[value])
+    ffmpeg.input(
+        os.path.join(pngpath, snapbase)
+        + "*_%s.%s" % (filename_dict[value], fileformat),
+        pattern_type="glob",
+        framerate=framerate,
+    ).output(mov_name).overwrite_output().run()
+
+    return mov_name
 
 
 def plot_ic(
@@ -284,6 +314,12 @@ if __name__ == "__main__":
         help="Base name of snapshot files. Default: 'snapshot_'",
         default="snapshot_",
     )
+    parser.add_argument(
+        "--framerate",
+        help="Framerate of movie. Default: 25.",
+        type=int,
+        default=25,
+    )
 
     args = parser.parse_args()
 
@@ -341,3 +377,14 @@ if __name__ == "__main__":
     mpi_barrier()
     if is_master():
         print("---FINISHED PLOTTING INITIAL CONDITIONS---")
+
+        if args.makemovie:
+            for value in args.values:
+                mov = make_movie(
+                    value,
+                    snapbase=args.input,
+                    pngpath=args.savepath,
+                    fileformat=args.fileformat,
+                    framerate=args.framerate,
+                )
+                print("Created movie %s" % mov)
