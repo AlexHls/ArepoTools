@@ -61,8 +61,8 @@ def create_ignition_spot(
     pos_com = np.array(s.data["pos"] - s.centerofmass())
 
     # Convert angles from degree into radians
-    ign_phi_radian = ign_phi * np.pi / 180.
-    ign_theta_radian = ign_theta * np.pi / 180.
+    ign_phi_radian = ign_phi * np.pi / 180.0
+    ign_theta_radian = ign_theta * np.pi / 180.0
 
     # Calculate cartesian coordinates of desired ignition spot
     pos_ign = np.array(

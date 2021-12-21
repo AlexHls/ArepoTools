@@ -4,6 +4,7 @@ import sys
 import os
 import glob
 import argparse
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ from loadmodules import *
 import gadget_snap
 from const import rsol, msol
 from matplotlib import rcParams
+from parallel_decorators import is_master, mpi_barrier, mpi_size, vectorize_parallel
 
 
 def plot_ic(
@@ -24,9 +26,10 @@ def plot_ic(
     axes=[0, 1],
     logplot=True,
     clean=False,
-    numthreads=4,
+    numthreads=1,
     proj_fact=0.5,
     fileformat="png",
+    savepath="./movie",
 ):
     filename_dict = {
         "rho": "density",
@@ -139,14 +142,20 @@ def plot_ic(
         fig.delxes(ax[1])
         ax[0].set_position([0, 0, 1, 1])
         fig.savefig(
-            file.relace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
+            os.path.join(
+                savepath,
+                file.replace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
+            ),
             dpi=600,
             pad_inches=0,
             bbox_inches="tight",
         )
     else:
         fig.savefig(
-            file.replace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
+            os.path.join(
+                savepath,
+                file.replace(".hdf5", "_%s.%s" % (filename_dict[value], fileformat)),
+            ),
             dpi=600,
         )
 
@@ -155,6 +164,7 @@ def plot_ic(
     return None
 
 
+@vectorize_parallel(method="MPI")
 def main(
     file,
     value,
@@ -165,8 +175,9 @@ def main(
     clean=False,
     scale=None,
     proj_fact=0.5,
-    numthreads=0.5,
+    numthreads=1,
     fileformat="pdf",
+    savepath="./movie",
 ):
 
     units_dict = {
@@ -204,6 +215,7 @@ def main(
         proj_fact=proj_fact,
         numthreads=numthreads,
         boxsize=boxsize,
+        savepath=savepath,
     )
 
     print("Finished plotting value", value)
@@ -212,10 +224,9 @@ def main(
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("file", help="Path to snapshot or initial condition file")
+    parser.add_argument("snappath", help="Path to snapshot directory")
     parser.add_argument(
         "-v",
         "--values",
@@ -240,9 +251,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         "--numthreads",
-        help="Number of threads used for tree walk. Default: 4.",
+        help="Number of threads used for tree walk. Default: 1.",
         type=int,
-        default=4,
+        default=1,
     )
     parser.add_argument(
         "-f",
@@ -250,20 +261,74 @@ if __name__ == "__main__":
         help="Fileformat for saved figure. Needs to be a format supported by matplotlib. Default: pdf",
         default="pdf",
     )
+    parser.add_argument(
+        "-m",
+        "--makemovie",
+        help="Toggles creation of movie at the end. Default: off",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-s",
+        "--savepath",
+        help="Path in which images and movies are saved. Default: './movies'",
+        default="./movies",
+    )
+    parser.add_argument(
+        "-i",
+        "--input",
+        help="Base name of snapshot files. Default: 'snapshot_'",
+        default="snapshot_",
+    )
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.file):
-        sys.exit("Specified file does not exist! Aborting...")
+    if not os.path.exists(args.snappath):
+        sys.exit("Specified directory does not exist! Aborting...")
 
-    for value in args.values:
-        main(
-            args.file,
-            value,
-            boxsize=args.boxsize,
-            proj_fact=args.proj_fact,
-            numthreads=args.numthreads,
-            fileformat=args.fileformat,
-        )
+    if not os.path.exists(args.savepath):
+        print("Creating save directory...")
+        os.mkdir(args.savepath)
 
-    print("---FINISHED PLOTTING INITIAL CONDITIONS---")
+    files = glob.glob(os.path.join(args.snappath, args.input + "*"))
+
+    n_snaps = len(files)
+
+    if is_master():
+        print("Plotting value(s)", args.values)
+        print("Running with", mpi_size(), "processes")
+        print("Reading from = %s\nSaving to = %s" % (args.snappath, args.savepath))
+        print("Making", n_snaps, " plots")
+
+    mpi_barrier()
+    if mpi_size() > n_snaps:
+        if is_master():
+            warnings.warn(
+                "Number of MPI tasks > plots to make. Switching to non-parallel mode"
+            )
+            for file in files:
+                print("Plotting snapshot %s" % file)
+                for value in args.values:
+                    main(
+                        file,
+                        value,
+                        boxsize=args.boxsize,
+                        proj_fact=args.proj_fact,
+                        numthreads=args.numthreads,
+                        fileformat=args.fileformat,
+                        savepath=args.savepath,
+                    )
+    else:
+        for value in args.values:
+            main(
+                files,
+                value,
+                boxsize=args.boxsize,
+                proj_fact=args.proj_fact,
+                numthreads=args.numthreads,
+                fileformat=args.fileformat,
+                savepath=args.savepath,
+            )
+
+    mpi_barrier()
+    if is_master():
+        print("---FINISHED PLOTTING INITIAL CONDITIONS---")
