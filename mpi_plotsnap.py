@@ -172,6 +172,7 @@ def plot_ic(
 def main(
     file,
     value,
+    snappath=".",
     vrange=None,
     axes=[0, 1],
     boxsize=1e10,
@@ -212,7 +213,7 @@ def main(
     print("Plotting value", value)
 
     plot_ic(
-        file,
+        os.path.join(snappath, file),
         value,
         vrange,
         scale,
@@ -294,6 +295,8 @@ if __name__ == "__main__":
         os.mkdir(args.savepath)
 
     files = glob.glob(os.path.join(args.snappath, args.input + "*"))
+    files = np.array([os.path.basename(x) for x in files])
+    files.sort()
 
     n_snaps = len(files)
 
@@ -315,6 +318,7 @@ if __name__ == "__main__":
                     main(
                         file,
                         value,
+                        snappath=args.snappath,
                         boxsize=args.boxsize,
                         proj_fact=args.proj_fact,
                         numthreads=args.numthreads,
@@ -326,6 +330,7 @@ if __name__ == "__main__":
             main(
                 files,
                 value,
+                snappath=args.snappath,
                 boxsize=args.boxsize,
                 proj_fact=args.proj_fact,
                 numthreads=args.numthreads,
