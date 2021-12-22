@@ -32,6 +32,7 @@ def create_ignition_spot(
     ign_phi=0,
     ign_theta=90,
     num_ignition_cells=100,
+    max_ignition_mass=None,
     outname=None,
     eos_file=None,
     species_file=None,
@@ -84,8 +85,21 @@ def create_ignition_spot(
     # spot, set the internal energy to match the specified temperature
     min_inds = np.argsort(dist)
 
-    for i in range(num_ignition_cells):
-        set_ignition_energy(s, eos, temp, min_inds[i])
+    if max_ignition_mass is None:
+        for i in range(num_ignition_cells):
+            set_ignition_energy(s, eos, temp, min_inds[i])
+        print("Created ignition spot with %d cells" % num_ignition_cells)
+    else:
+        m_ign = 0
+        i = 0
+        while m_ign <= max_ignition_mass:
+            set_ignition_energy(s, eos, temp, min_inds[i])
+            m_ign += s.data["mass"][min_inds[i]]
+            i += 1
+        print(
+            "Created ignition spot %.2e M_sol with %d cells"
+            % (max_ignition_mass / msol, i)
+        )
 
     # Write resulting snapshot as new initial condition file
     if outname is None:
@@ -158,6 +172,12 @@ if __name__ == "__main__":
         type=float,
         default=90,
     )
+    parser.add_argument(
+        "-m",
+        "--mass",
+        help="Mass of ignition spot in g. When set, --num_cells will be ignored",
+        type=float,
+    )
 
     args = parser.parse_args()
 
@@ -168,6 +188,7 @@ if __name__ == "__main__":
         species_file=args.species,
         temp=args.temperature,
         num_ignition_cells=args.num_cells,
+        max_ignition_mass=args.mass,
         ign_rad=args.radius,
         ign_phi=args.phi,
         ign_theta=args.theta,
