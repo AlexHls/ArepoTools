@@ -125,6 +125,15 @@ def plot_ic(
             transform=ax[0].transAxes,
             color="w",
         )
+        ax[0].text(
+            0.7,
+            0.93,
+            "Time: {:>7.02f}s".format(s.time),
+            transform=ax[0].transAxes,
+            fontname="Miriam Libre",
+            color="white",
+            fontsize=12,
+        )
         ax[1].set_ylabel(units_dict[value])
         ax[1].set_position([0.75, 0, 1, 1])
 
