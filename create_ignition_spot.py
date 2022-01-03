@@ -104,10 +104,12 @@ def create_ignition_spot(
             % (m_ign / msol, v_ign, i)
         )
     elif max_ignition_mass is None and max_ignition_volume is not None:
+        m_ign = 0
         v_ign = 0
         i = 0
         while v_ign <= max_ignition_volume:
             set_ignition_energy(s, eos, temp, min_inds[i])
+            m_ign += s.data["mass"][min_inds[i]]
             v_ign += s.data["vol"][min_inds[i]]
             i += 1
         print(
