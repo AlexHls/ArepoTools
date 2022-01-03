@@ -33,6 +33,7 @@ def create_ignition_spot(
     ign_theta=90,
     num_ignition_cells=100,
     max_ignition_mass=None,
+    max_ignition_volume=None,
     outname=None,
     eos_file=None,
     species_file=None,
@@ -85,21 +86,36 @@ def create_ignition_spot(
     # spot, set the internal energy to match the specified temperature
     min_inds = np.argsort(dist)
 
-    if max_ignition_mass is None:
+    if max_ignition_mass is None and max_ignition_volume is None:
         for i in range(num_ignition_cells):
             set_ignition_energy(s, eos, temp, min_inds[i])
         print("Created ignition spot with %d cells" % num_ignition_cells)
-    else:
+    elif max_ignition_volume is None and max_ignition_mass is not None:
         m_ign = 0
+        v_ign = 0
         i = 0
         while m_ign <= max_ignition_mass:
             set_ignition_energy(s, eos, temp, min_inds[i])
             m_ign += s.data["mass"][min_inds[i]]
+            v_ign += s.data["vol"][min_inds[i]]
             i += 1
         print(
-            "Created ignition spot %.2e M_sol with %d cells"
-            % (max_ignition_mass / msol, i)
+            "Created ignition spot: %.2e M_sol, %.2e cm^3 with %d cells"
+            % (m_ign / msol, v_ign, i)
         )
+    elif max_ignition_mass is None and max_ignition_volume is not None:
+        v_ign = 0
+        i = 0
+        while v_ign <= max_ignition_volume:
+            set_ignition_energy(s, eos, temp, min_inds[i])
+            v_ign += s.data["vol"][min_inds[i]]
+            i += 1
+        print(
+            "Created ignition spot: %.2e M_sol, %.2e cm^3 with %d cells"
+            % (m_ign / msol, v_ign, i)
+        )
+    else:
+        raise AttributeError("Could not figure out which limit is set.")
 
     # Write resulting snapshot as new initial condition file
     if outname is None:
@@ -178,8 +194,17 @@ if __name__ == "__main__":
         help="Mass of ignition spot in g. When set, --num_cells will be ignored",
         type=float,
     )
+    parser.add_argument(
+        "-v",
+        "--volume",
+        help="Volume of ignition spot in cm^3. When set, --num_cells will be ignored",
+        type=float,
+    )
 
     args = parser.parse_args()
+
+    if args.mass and args.volume:
+        raise AttributeError("Mass and Volume cannot be limited at the same time. Choose only one.")
 
     create_ignition_spot(
         args.snapshot,
@@ -189,6 +214,7 @@ if __name__ == "__main__":
         temp=args.temperature,
         num_ignition_cells=args.num_cells,
         max_ignition_mass=args.mass,
+        max_ignition_volume=args.volume,
         ign_rad=args.radius,
         ign_phi=args.phi,
         ign_theta=args.theta,
