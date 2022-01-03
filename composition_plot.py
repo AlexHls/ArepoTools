@@ -15,10 +15,10 @@ import loaders
 
 
 def create_cycler(len_f, len_n):
-    cycle_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    cycle_ls = ['-', ':', '--', '-.']
+    cycle_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    cycle_ls = ["-", ":", "--", "-."]
 
-    cc = (cycler(color=cycle_colors[:len_n]) * cycler(linestyle=cycle_ls[:len_f]))
+    cc = cycler(color=cycle_colors[:len_n]) * cycler(linestyle=cycle_ls[:len_f])
 
 
 def composition_plot(
@@ -60,26 +60,28 @@ def composition_plot(
         comp = np.genfromtxt(f)
 
         if len_f > 1:
-            runname = os.path.split(os.path.split(os.path.split(os.path.abspath(f))[0])[0])[1]
+            runname = os.path.split(
+                os.path.split(os.path.split(os.path.abspath(f))[0])[0]
+            )[1]
             runname = " - %s" % runname
         else:
             runname = ""
 
         n_species = comp.shape[1] - 1
-        assert n_species == sp['count'], "Species file does not fit composition file"
-        
-        time = comp[:,0]
-        
+        assert n_species == sp["count"], "Species file does not fit composition file"
+
+        time = comp[:, 0]
+
         if maxtime is None:
             maxtime = max(time)
         if mintime is None:
             mintime = min(time)
-            
+
         mask = np.logical_and(time > mintime, time < maxtime)
 
         for n in nucleid:
-            sp_i = np.where(np.array(sp['names'])==n)[0][0]
-            sp_data = comp[:,sp_i+1]
+            sp_i = np.where(np.array(sp["names"]) == n)[0][0]
+            sp_data = comp[:, sp_i + 1]
 
             ax.semilogy(
                 time[mask],
@@ -88,8 +90,8 @@ def composition_plot(
             )
 
     ax.legend()
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Abundance Fraction')
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Abundance Fraction")
     fig.tight_layout()
 
     if not os.path.exists(save):
@@ -97,14 +99,15 @@ def composition_plot(
         os.mkdir(save)
 
     savefile = os.path.join(save, "composition_evolution.%s" % filetype)
-    
+
     saved = False
     tryed = 0
     while not saved:
         if os.path.exists(savefile):
             tryed += 1
             savefile = os.path.join(
-                save, "composition_evolution-(%d).%s" % (tryed, filetype),
+                save,
+                "composition_evolution-(%d).%s" % (tryed, filetype),
             )
         else:
             fig.savefig(

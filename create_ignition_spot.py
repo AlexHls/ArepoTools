@@ -206,7 +206,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mass and args.volume:
-        raise AttributeError("Mass and Volume cannot be limited at the same time. Choose only one.")
+        raise AttributeError(
+            "Mass and Volume cannot be limited at the same time. Choose only one."
+        )
 
     create_ignition_spot(
         args.snapshot,
