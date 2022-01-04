@@ -125,6 +125,8 @@ def abundance_plot(
             else:
                 df = pd.concat([df, get_abundances(s, sp["names"])])
 
+            print("[%d/%d] Processed %s" % (i, len(files), file))
+
         if not os.path.exists(save):
             print("Creating save directory...")
             os.mkdir(save)
