@@ -260,7 +260,7 @@ if __name__ == "__main__":
         mintime=args.mintime,
         plotonly=args.plotonly,
         num_elem=args.num_elem,
-        scale=scale,
+        scale=args.scale,
     )
 
     print("Finished abundance post-processing: %s" % s)
