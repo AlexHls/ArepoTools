@@ -6,19 +6,14 @@ import argparse
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+from matplotlib import cm
 from cycler import cycler
 
 from loadmodules import *
 import gadget_snap
 from const import rsol, msol
 import loaders
-
-
-def create_cycler(len_f, len_n):
-    cycle_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-    cycle_ls = ["-", ":", "--", "-."]
-
-    cc = cycler(color=cycle_colors[:len_n]) * cycler(linestyle=cycle_ls[:len_f])
 
 
 def composition_plot(
@@ -30,12 +25,36 @@ def composition_plot(
     dpi=600,
     maxtime=None,
     mintime=None,
+    scale="linear",
 ):
 
     if maxtime is not None and mintime is not None:
         if maxtime < mintime:
             raise ValueError("maxtime is larger than mintime")
 
+    ls = [
+        ("solid", (0, ())),
+        ("dotted", (0, (1, 1))),
+        ("dashed", (0, (5, 5))),
+        ("dashdotted", (0, (3, 5, 1, 5))),
+        ("dashdotdotted", (0, (3, 5, 1, 5, 1, 5))),
+        ("loosely dotted", (0, (1, 10))),
+        ("loosely dashed", (0, (5, 10))),
+        ("loosely dashdotted", (0, (3, 10, 1, 10))),
+        ("loosely dashdotdotted", (0, (3, 10, 1, 10, 1, 10))),
+        ("densely dotted", (0, (1, 1))),
+        ("densely dashed", (0, (5, 1))),
+        ("densely dashdotted", (0, (3, 1, 1, 1))),
+        ("densely dashdotdotted", (0, (3, 1, 1, 1, 1, 1))),
+    ]
+    cmaps = [
+        "Blues_r",
+        "Oranges_r",
+        "Greens_r",
+        "Reds_r",
+        "Purples_r",
+        "Greys_r",
+    ]
     sp = loaders.load_species(eosspecies)
 
     fig, ax = plt.subplots(1, 1, figsize=[6.4, 4.8])
@@ -52,11 +71,14 @@ def composition_plot(
         len_n = 1
         nucleid = np.array([nucleid])
 
-    cc = create_cycler(len_f, len_n)
+    color_count = np.arange(len_f)
+    norm = mpl.colors.Normalize(min(color_count), max(color_count))
+    colors = []
+    for k in range(len_n):
+        vals = np.array(norm(color_count)) * 0.5
+        colors.append(cm.get_cmap(cmaps[k % len(cmaps)])(vals))
 
-    ax.set_prop_cycle(cc)
-
-    for f in file:
+    for i, f in enumerate(file):
         comp = np.genfromtxt(f)
 
         if len_f > 1:
@@ -79,18 +101,34 @@ def composition_plot(
 
         mask = np.logical_and(time >= mintime, time <= maxtime)
 
-        for n in nucleid:
+        for j, n in enumerate(nucleid):
             sp_i = np.where(np.array(sp["names"]) == n)[0][0]
             sp_data = comp[:, sp_i + 1]
 
-            ax.semilogy(
-                time[mask], sp_data[mask], label="{:s}{:s}".format(n, runname),
-            )
+            if scale == "log":
+                ax.semilogy(
+                    time[mask],
+                    sp_data[mask],
+                    label="{:s}{:s}".format(n, runname),
+                    color=colors[j][i],
+                    linestyle=ls[i % len(ls)][1],
+                )
+            elif scale == "linear":
+                ax.plot(
+                    time[mask],
+                    sp_data[mask],
+                    label="{:s}{:s}".format(n, runname),
+                    color=colors[j][i],
+                    linestyle=ls[i % len(ls)][1],
+                )
+            else:
+                raise ValueError("Invalid scale")
 
-    ax.legend()
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Abundance Fraction")
+    ax.set_ylabel("Abundance fraction")
     fig.tight_layout()
+    handles, labels = ax.get_legend_handles_labels()
+    lgd = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.05, 1.05))
 
     if not os.path.exists(save):
         print("Creating save directory...")
@@ -104,11 +142,15 @@ def composition_plot(
         if os.path.exists(savefile):
             tryed += 1
             savefile = os.path.join(
-                save, "composition_evolution-(%d).%s" % (tryed, filetype),
+                save,
+                "composition_evolution-(%d).%s" % (tryed, filetype),
             )
         else:
             fig.savefig(
-                savefile, bbox_inches="tight", dpi=dpi,
+                savefile,
+                bbox_inches="tight",
+                bbox_extra_artists=(lgd,),
+                dpi=dpi,
             )
             saved = True
 
@@ -154,13 +196,27 @@ if __name__ == "__main__":
         default="png",
     )
     parser.add_argument(
-        "-d", "--dpi", help="DPI of saved figure. Default: 600", type=int, default=600,
+        "-d",
+        "--dpi",
+        help="DPI of saved figure. Default: 600",
+        type=int,
+        default=600,
     )
     parser.add_argument(
-        "--maxtime", help="Upper timelimit for composition plot in s.", type=float,
+        "--maxtime",
+        help="Upper timelimit for composition plot in s.",
+        type=float,
     )
     parser.add_argument(
-        "--mintime", help="Lower timelimit for composition plot in s.", type=float,
+        "--mintime",
+        help="Lower timelimit for composition plot in s.",
+        type=float,
+    )
+    parser.add_argument(
+        "--scale",
+        help="Scale of plot. Either linear or log. Default: linear",
+        default="linear",
+        choices=["linear", "log"],
     )
 
     args = parser.parse_args()
@@ -174,6 +230,7 @@ if __name__ == "__main__":
         dpi=args.dpi,
         maxtime=args.maxtime,
         mintime=args.mintime,
+        scale=args.scale,
     )
 
     print("Finished plotting %s" % s)

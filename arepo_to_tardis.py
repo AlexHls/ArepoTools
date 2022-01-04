@@ -160,7 +160,14 @@ def write_csvy_model(expdict, exportname, density_day, isotope_day, specieslist=
                 )
             )
 
-        f.write("".join(["\n", "---\n",]))
+        f.write(
+            "".join(
+                [
+                    "\n",
+                    "---\n",
+                ]
+            )
+        )
 
         # WRITE DATA
         datastring = ["velocity,", "density,"]
@@ -343,7 +350,9 @@ def arepo_to_tardis(
 
     plt.legend()
     plt.savefig(
-        expname + ".pdf", bbox_inches="tight", dpi=600,
+        expname + ".pdf",
+        bbox_inches="tight",
+        dpi=600,
     )
     plt.close()
 
