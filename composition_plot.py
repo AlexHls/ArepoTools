@@ -24,7 +24,7 @@ def create_cycler(len_f, len_n):
 def composition_plot(
     file=os.path.join("output", "composition.txt"),
     save="plots",
-    nucleid="ni59",
+    nucleid="ni56",
     eosspecies="species55.txt",
     filetype="png",
     dpi=600,
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         "-n",
         "--nucleid",
         help="List of elements to be plotted. Needs to be listed in species file. Default: ni59",
-        default="ni59",
+        default="ni56",
         nargs="+",
     )
     parser.add_argument(

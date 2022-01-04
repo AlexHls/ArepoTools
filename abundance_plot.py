@@ -37,6 +37,7 @@ def create_plot(
     num_elem=5,
     maxtime=None,
     mintime=None,
+    scale="linear",
 ):
     if maxtime is not None and mintime is not None:
         if maxtime < mintime:
@@ -59,10 +60,16 @@ def create_plot(
     # Get n largest contributions to composition
     n_largest = dataframe.transpose().nlargest(num_elem, max(time)).index.to_list()
 
-    for n in n_largest:
-        ax.semilogy(
-            time, dataframe.transpose().loc[n].to_numpy()[mask], label=n,
-        )
+    if scale == "log":
+        for n in n_largest:
+            ax.semilogy(
+                time, dataframe.transpose().loc[n].to_numpy()[mask], label=n,
+            )
+    elif scale == "linear":
+        for n in n_largest:
+            ax.plot(
+                time, dataframe.transpose().loc[n].to_numpy()[mask], label=n,
+            )
 
     ax.legend()
     ax.set_xlabel("Time (s)")
@@ -105,6 +112,7 @@ def abundance_plot(
     maxtime=None,
     mintime=None,
     plotonly=False,
+    scale="linear",
 ):
 
     if not plotonly:
@@ -125,7 +133,7 @@ def abundance_plot(
             else:
                 df = pd.concat([df, get_abundances(s, sp["names"])])
 
-            print("[%d/%d] Processed %s" % (i, len(files), file))
+            print("[%d/%d] Processed %s" % (i + 1, len(files), file))
 
         if not os.path.exists(save):
             print("Creating save directory...")
@@ -152,6 +160,7 @@ def abundance_plot(
             num_elem=num_elem,
             maxtime=maxtime,
             mintime=mintime,
+            scale=scale,
         )
 
     else:
@@ -173,6 +182,7 @@ def abundance_plot(
             num_elem=num_elem,
             maxtime=maxtime,
             mintime=mintime,
+            scale=scale,
         )
 
     return savefile
@@ -230,6 +240,12 @@ if __name__ == "__main__":
         type=int,
         default=5,
     )
+    parser.add_argument(
+        "--scale",
+        help="Scale of plot. Either linear or log. Default: linear",
+        default="linear",
+        choices=["linear", "log"],
+    )
 
     args = parser.parse_args()
 
@@ -244,6 +260,7 @@ if __name__ == "__main__":
         mintime=args.mintime,
         plotonly=args.plotonly,
         num_elem=args.num_elem,
+        scale=scale,
     )
 
     print("Finished abundance post-processing: %s" % s)
