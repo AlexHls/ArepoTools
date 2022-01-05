@@ -9,7 +9,6 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import ffmpeg
-from mpi4py import MPI
 
 from loadmodules import *
 import gadget_snap
@@ -339,8 +338,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    comm = MPI.COMM_WORLD
-
     if is_master():
         if not os.path.exists(args.snappath):
             sys.exit("Specified directory does not exist! Aborting...")
@@ -395,13 +392,12 @@ if __name__ == "__main__":
                             )
                             print("Created movie %s" % mov)
                     sys.exit()
-            vranges.append(
-                tuple(
-                    np.genfromtxt(os.path.join(args.savepath, "vrange_%s.txt" % value))
-                )
-            )
 
-    vranges = comm.bcast(vranges, root=0)
+    mpi_barrier()
+    for value in args.values:
+        vranges.append(
+            tuple(np.genfromtxt(os.path.join(args.savepath, "vrange_%s.txt" % value)))
+        )
 
     mpi_barrier()
     if mpi_size() > n_snaps:
