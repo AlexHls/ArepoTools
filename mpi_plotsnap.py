@@ -209,7 +209,8 @@ def plot_snapshot(
     return None
 
 
-@vectorize_parallel(method="MPI")
+scheduling = "static"
+@vectorize_parallel(method="MPI", scheduling=scheduling)
 def main(
     file,
     value,
@@ -403,8 +404,10 @@ if __name__ == "__main__":
             )
     else:
         vranges = None
-
+    
     vranges = comm.bcast(vranges, root=0)
+    files = comm.bcast(files, root=0)
+    n_snaps = comm.bcast(n_snaps, root=0)
 
     comm.Barrier()
     if comm.Get_size() > n_snaps:
@@ -428,6 +431,7 @@ if __name__ == "__main__":
                         vrange=vranges[i],
                     )
     else:
+        scheduling = "dynamic"
         for i, value in enumerate(args.values):
             main(
                 files,
