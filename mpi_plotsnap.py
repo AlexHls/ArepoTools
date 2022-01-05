@@ -49,7 +49,6 @@ def make_movie(
 def plot_snapshot(
     file,
     value,
-    vrange,
     scale,
     boxsize=1e10,
     scale_center=0.80,
@@ -61,6 +60,7 @@ def plot_snapshot(
     fileformat="png",
     savepath="./movie",
     redo=False,
+    vrange=None,
 ):
     filename_dict = {
         "rho": "density",
@@ -122,6 +122,10 @@ def plot_snapshot(
             numthreads=numthreads,
             center=s.centerofmass(),
             cmap="cescale",
+        )
+        np.savetxt(
+            os.path.join(args.savepath, "vrange_%s.txt" % value),
+            [pc.colorbar.vmin,pc.colorbar.vmax],
         )
     else:
         pc = s.plot_Aslice(
@@ -213,7 +217,6 @@ def main(
     file,
     value,
     snappath=".",
-    vrange=None,
     axes=[0, 1],
     boxsize=1e10,
     logplot=True,
@@ -224,6 +227,7 @@ def main(
     fileformat="pdf",
     savepath="./movie",
     redo=False,
+    vrange=None,
 ):
 
     units_dict = {
@@ -256,13 +260,13 @@ def main(
     plot_snapshot(
         os.path.join(snappath, file),
         value,
-        vrange,
         scale,
         proj_fact=proj_fact,
         numthreads=numthreads,
         boxsize=boxsize,
         savepath=savepath,
         redo=redo,
+        vrange=vrange
     )
 
     print("Finished plotting value", value)
@@ -340,25 +344,63 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    if is_master():
+        if not os.path.exists(args.snappath):
+            sys.exit("Specified directory does not exist! Aborting...")
 
-    if not os.path.exists(args.snappath):
-        sys.exit("Specified directory does not exist! Aborting...")
-
-    if not os.path.exists(args.savepath):
-        print("Creating save directory...")
-        os.mkdir(args.savepath)
+        if not os.path.exists(args.savepath):
+            print("Creating save directory...")
+            os.mkdir(args.savepath)
 
     files = glob.glob(os.path.join(args.snappath, args.input + "*"))
     files = np.array([os.path.basename(x) for x in files])
     files.sort()
 
     n_snaps = len(files)
+    vranges = []
 
+    mpi_barrier()
     if is_master():
         print("Plotting value(s)", args.values)
         print("Running with", mpi_size(), "processes")
         print("Reading from = %s\nSaving to = %s" % (args.snappath, args.savepath))
         print("Making", n_snaps, " plots")
+        
+        # Check for v_range file:
+        for value in args.values:
+            if not os.path.exists(os.path.join(args.savepath, "vrange_%s.txt" % value)):
+                n_snaps -= 1
+                print("Creating initial %s plot for vranges" % value)
+                main(
+                    [files[0]],
+                    value,
+                    snappath=args.snappath,
+                    boxsize=args.boxsize,
+                    proj_fact=args.proj_fact,
+                    numthreads=args.numthreads,
+                    fileformat=args.fileformat,
+                    savepath=args.savepath,
+                    redo=args.redo,
+                    vrange=None,
+                )      
+                if n_snaps > 0:
+                    files = files[1:]
+                else:
+                    print("---FINISHED PLOTTING SNAPSHOTS---")
+                    if args.makemovie:
+                        for value in args.values:
+                            mov = make_movie(
+                                value,
+                                snapbase=args.input,
+                                pngpath=args.savepath,
+                                fileformat=args.fileformat,
+                                framerate=args.framerate,
+                            )
+                            print("Created movie %s" % mov)
+                    sys.exit()
+            vranges.append(tuple(np.genfromtxt(
+                os.path.join(args.savepath, "vrange_%s.txt" % value)
+            )))
 
     mpi_barrier()
     if mpi_size() > n_snaps:
@@ -368,7 +410,7 @@ if __name__ == "__main__":
             )
             for file in files:
                 print("Plotting snapshot %s" % file)
-                for value in args.values:
+                for i, value in enumerate(args.values):
                     main(
                         file,
                         value,
@@ -379,9 +421,10 @@ if __name__ == "__main__":
                         fileformat=args.fileformat,
                         savepath=args.savepath,
                         redo=args.redo,
+                        vrange=vranges[i],
                     )
     else:
-        for value in args.values:
+        for i, value in enumerate(args.values):
             main(
                 files,
                 value,
@@ -392,11 +435,12 @@ if __name__ == "__main__":
                 fileformat=args.fileformat,
                 savepath=args.savepath,
                 redo=args.redo,
+                vrange=vranges[i],
             )
 
     mpi_barrier()
     if is_master():
-        print("---FINISHED PLOTTING INITIAL CONDITIONS---")
+        print("---FINISHED PLOTTING SNAPSHOTS---")
 
         if args.makemovie:
             for value in args.values:
