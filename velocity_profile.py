@@ -266,7 +266,7 @@ def velocity_profile(
         )
     )
     ax.set_xlabel("Velocity (km/s)")
-    ax.set_ylabel("Mass fraction(%)")
+    ax.set_ylabel("Mass fraction (%)")
     fig.tight_layout()
     handles, labels = ax.get_legend_handles_labels()
     lgd = ax.legend(
@@ -288,7 +288,7 @@ def velocity_profile(
         if os.path.exists(savefile):
             tryed += 1
             savefile = os.path.join(
-                save, "velocity_profile-(%d).%s" % (tryed, filetype),
+                savepath, "velocity_profile-(%d).%s" % (tryed, filetype),
             )
         else:
             fig.savefig(
