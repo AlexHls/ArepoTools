@@ -142,15 +142,11 @@ def composition_plot(
         if os.path.exists(savefile):
             tryed += 1
             savefile = os.path.join(
-                save,
-                "composition_evolution-(%d).%s" % (tryed, filetype),
+                save, "composition_evolution-(%d).%s" % (tryed, filetype),
             )
         else:
             fig.savefig(
-                savefile,
-                bbox_inches="tight",
-                bbox_extra_artists=(lgd,),
-                dpi=dpi,
+                savefile, bbox_inches="tight", bbox_extra_artists=(lgd,), dpi=dpi,
             )
             saved = True
 
@@ -196,21 +192,13 @@ if __name__ == "__main__":
         default="png",
     )
     parser.add_argument(
-        "-d",
-        "--dpi",
-        help="DPI of saved figure. Default: 600",
-        type=int,
-        default=600,
+        "-d", "--dpi", help="DPI of saved figure. Default: 600", type=int, default=600,
     )
     parser.add_argument(
-        "--maxtime",
-        help="Upper timelimit for composition plot in s.",
-        type=float,
+        "--maxtime", help="Upper timelimit for composition plot in s.", type=float,
     )
     parser.add_argument(
-        "--mintime",
-        help="Lower timelimit for composition plot in s.",
-        type=float,
+        "--mintime", help="Lower timelimit for composition plot in s.", type=float,
     )
     parser.add_argument(
         "--scale",

@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import ffmpeg
+from mpi4py import MPI
 
 from loadmodules import *
 import gadget_snap
@@ -125,7 +126,7 @@ def plot_snapshot(
         )
         np.savetxt(
             os.path.join(args.savepath, "vrange_%s.txt" % value),
-            [pc.colorbar.vmin,pc.colorbar.vmax],
+            [pc.colorbar.vmin, pc.colorbar.vmax],
         )
     else:
         pc = s.plot_Aslice(
@@ -196,15 +197,11 @@ def plot_snapshot(
         fig.delxes(ax[1])
         ax[0].set_position([0, 0, 1, 1])
         fig.savefig(
-            savename,
-            dpi=600,
-            pad_inches=0,
-            bbox_inches="tight",
+            savename, dpi=600, pad_inches=0, bbox_inches="tight",
         )
     else:
         fig.savefig(
-            savename,
-            dpi=600,
+            savename, dpi=600,
         )
 
     plt.close(fig)
@@ -266,7 +263,7 @@ def main(
         boxsize=boxsize,
         savepath=savepath,
         redo=redo,
-        vrange=vrange
+        vrange=vrange,
     )
 
     print("Finished plotting value", value)
@@ -337,13 +334,11 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
-        "--framerate",
-        help="Framerate of movie. Default: 25.",
-        type=int,
-        default=25,
+        "--framerate", help="Framerate of movie. Default: 25.", type=int, default=25,
     )
 
     args = parser.parse_args()
+
     if is_master():
         if not os.path.exists(args.snappath):
             sys.exit("Specified directory does not exist! Aborting...")
@@ -365,7 +360,7 @@ if __name__ == "__main__":
         print("Running with", mpi_size(), "processes")
         print("Reading from = %s\nSaving to = %s" % (args.snappath, args.savepath))
         print("Making", n_snaps, " plots")
-        
+
         # Check for v_range file:
         for value in args.values:
             if not os.path.exists(os.path.join(args.savepath, "vrange_%s.txt" % value)):
@@ -382,7 +377,7 @@ if __name__ == "__main__":
                     savepath=args.savepath,
                     redo=args.redo,
                     vrange=None,
-                )      
+                )
                 if n_snaps > 0:
                     files = files[1:]
                 else:
@@ -398,9 +393,13 @@ if __name__ == "__main__":
                             )
                             print("Created movie %s" % mov)
                     sys.exit()
-            vranges.append(tuple(np.genfromtxt(
-                os.path.join(args.savepath, "vrange_%s.txt" % value)
-            )))
+            vranges.append(
+                tuple(
+                    np.genfromtxt(os.path.join(args.savepath, "vrange_%s.txt" % value))
+                )
+            )
+
+    vranges = comm.bcast(vranges, root=0)
 
     mpi_barrier()
     if mpi_size() > n_snaps:

@@ -63,16 +63,12 @@ def create_plot(
     if scale == "log":
         for n in n_largest:
             ax.semilogy(
-                time,
-                dataframe.transpose().loc[n].to_numpy()[mask],
-                label=n,
+                time, dataframe.transpose().loc[n].to_numpy()[mask], label=n,
             )
     elif scale == "linear":
         for n in n_largest:
             ax.plot(
-                time,
-                dataframe.transpose().loc[n].to_numpy()[mask],
-                label=n,
+                time, dataframe.transpose().loc[n].to_numpy()[mask], label=n,
             )
     else:
         raise ValueError("Invalid scale")
@@ -95,15 +91,11 @@ def create_plot(
         if os.path.exists(savefile):
             tryed += 1
             savefile = os.path.join(
-                save,
-                "abundance_evolution-(%d).%s" % (tryed, filetype),
+                save, "abundance_evolution-(%d).%s" % (tryed, filetype),
             )
         else:
             fig.savefig(
-                savefile,
-                bbox_inches="tight",
-                bbox_extra_artists=(lgd,),
-                dpi=dpi,
+                savefile, bbox_inches="tight", bbox_extra_artists=(lgd,), dpi=dpi,
             )
             saved = True
 
@@ -136,10 +128,7 @@ def abundance_plot(
 
         for i, file in enumerate(files):
             s = gadget_snap.gadget_snapshot(
-                os.path.join(snappath, file),
-                hdf5=True,
-                quiet=True,
-                lazy_load=True,
+                os.path.join(snappath, file), hdf5=True, quiet=True, lazy_load=True,
             )
 
             if i == 0:
@@ -160,10 +149,7 @@ def abundance_plot(
         while not saved:
             if os.path.exists(savefile):
                 tryed += 1
-                savefile = os.path.join(
-                    save,
-                    "abundances-(%d).csv" % tryed,
-                )
+                savefile = os.path.join(save, "abundances-(%d).csv" % tryed,)
             else:
                 df.to_csv(savefile)
                 saved = True
@@ -181,10 +167,7 @@ def abundance_plot(
         )
 
     else:
-        savefile = os.path.join(
-            save,
-            "abundances.csv",
-        )
+        savefile = os.path.join(save, "abundances.csv",)
         try:
             df = pd.read_csv(savefile, index_col=0)
         except FileNotFoundError:
@@ -219,10 +202,7 @@ if __name__ == "__main__":
         default="snapshot",
     )
     parser.add_argument(
-        "-p",
-        "--path",
-        help="Snapshot directory. Default: output",
-        default="output",
+        "-p", "--path", help="Snapshot directory. Default: output", default="output",
     )
     parser.add_argument(
         "-s",
@@ -243,21 +223,13 @@ if __name__ == "__main__":
         default="png",
     )
     parser.add_argument(
-        "-d",
-        "--dpi",
-        help="DPI of saved figure. Default: 600",
-        type=int,
-        default=600,
+        "-d", "--dpi", help="DPI of saved figure. Default: 600", type=int, default=600,
     )
     parser.add_argument(
-        "--maxtime",
-        help="Upper timelimit for composition plot in s.",
-        type=float,
+        "--maxtime", help="Upper timelimit for composition plot in s.", type=float,
     )
     parser.add_argument(
-        "--mintime",
-        help="Lower timelimit for composition plot in s.",
-        type=float,
+        "--mintime", help="Lower timelimit for composition plot in s.", type=float,
     )
     parser.add_argument(
         "--plotonly",
