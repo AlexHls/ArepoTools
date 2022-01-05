@@ -396,12 +396,15 @@ if __name__ == "__main__":
                             )
                             print("Created movie %s" % mov)
                     sys.exit()
+            vranges.append(
+                tuple(
+                    np.genfromtxt(os.path.join(args.savepath, "vrange_%s.txt" % value))
+                )
+            )
+    else:
+        vranges = None
 
-    comm.Barrier()
-    for value in args.values:
-        vranges.append(
-            tuple(np.genfromtxt(os.path.join(args.savepath, "vrange_%s.txt" % value)))
-        )
+    vranges = comm.bcast(vranges, root=0)
 
     comm.Barrier()
     if comm.Get_size() > n_snaps:
