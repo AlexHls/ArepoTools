@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import ffmpeg
+from mpi4py import MPI
 
 from loadmodules import *
 import gadget_snap
@@ -338,7 +339,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if is_master():
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+
+    if rank == 0:
         if not os.path.exists(args.snappath):
             sys.exit("Specified directory does not exist! Aborting...")
 
@@ -353,8 +357,8 @@ if __name__ == "__main__":
     n_snaps = len(files)
     vranges = []
 
-    mpi_barrier()
-    if is_master():
+    comm.Barrier()
+    if rank == 0:
         print("Plotting value(s)", args.values)
         print("Running with", mpi_size(), "processes")
         print("Reading from = %s\nSaving to = %s" % (args.snappath, args.savepath))
@@ -393,15 +397,15 @@ if __name__ == "__main__":
                             print("Created movie %s" % mov)
                     sys.exit()
 
-    mpi_barrier()
+    comm.Barrier()
     for value in args.values:
         vranges.append(
             tuple(np.genfromtxt(os.path.join(args.savepath, "vrange_%s.txt" % value)))
         )
 
-    mpi_barrier()
-    if mpi_size() > n_snaps:
-        if is_master():
+    comm.Barrier()
+    if comm.Get_size() > n_snaps:
+        if rank == 0:
             warnings.warn(
                 "Number of MPI tasks > plots to make. Switching to non-parallel mode"
             )
@@ -435,8 +439,8 @@ if __name__ == "__main__":
                 vrange=vranges[i],
             )
 
-    mpi_barrier()
-    if is_master():
+    comm.Barrier()
+    if rank == 0:
         print("---FINISHED PLOTTING SNAPSHOTS---")
 
         if args.makemovie:
