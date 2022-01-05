@@ -209,8 +209,69 @@ def plot_snapshot(
     return None
 
 
-@vectorize_parallel(method="MPI", scheduling="static")
-def main(
+def main_sequential(
+    file,
+    value,
+    snappath=".",
+    axes=[0, 1],
+    boxsize=1e10,
+    logplot=True,
+    clean=False,
+    scale=None,
+    proj_fact=0.5,
+    numthreads=1,
+    fileformat="pdf",
+    savepath="./movie",
+    redo=False,
+    vrange=None,
+):
+
+    units_dict = {
+        "rho": r"Density ($g/cm^3$)",
+        "mass": r"Mass ($g$)",
+        "bfld": r"Bfield (G)",
+        "vel": r"Velocity ($m/,s^{-1}$)",
+        "mach": "Mach Number",
+        "pres": "Pressure",
+        "pb": "$P_B/P_{gas}$",
+        "temp": "Temperature (K)",
+        "u": "Internal Energy (erg)",
+        "pass00": "Passive Scalar",
+        "pass01": "Passive Scalar",
+        "xnuc00": "He fraction",
+        "xnuc01": "C fraction",
+    }
+
+    if value not in list(units_dict.keys()):
+        print("Value %s not recognized, ignoring..." % value)
+        return
+
+    if scale is None:
+        scale = 0.05 * boxsize
+
+    rcParams["font.family"] = "Roboto"
+
+    print("Plotting value", value)
+
+    plot_snapshot(
+        os.path.join(snappath, file),
+        value,
+        scale,
+        proj_fact=proj_fact,
+        numthreads=numthreads,
+        boxsize=boxsize,
+        savepath=savepath,
+        redo=redo,
+        vrange=vrange,
+    )
+
+    print("Finished plotting value", value)
+
+    return
+
+
+@vectorize_parallel(method="MPI")
+def main_parallel(
     file,
     value,
     snappath=".",
@@ -357,7 +418,6 @@ if __name__ == "__main__":
     n_snaps = len(files)
     vranges = []
 
-    comm.Barrier()
     if rank == 0:
         print("Plotting value(s)", args.values)
         print("Running with", mpi_size(), "processes")
@@ -366,11 +426,13 @@ if __name__ == "__main__":
 
         # Check for v_range file:
         for value in args.values:
-            if not os.path.exists(os.path.join(args.savepath, "vrange_%s.txt" % value)):
-                n_snaps -= 1
+            if (
+                not os.path.exists(os.path.join(args.savepath, "vrange_%s.txt" % value))
+                or args.redo
+            ):
                 print("Creating initial %s plot for vranges" % value)
-                main(
-                    [files[0]],
+                main_sequential(
+                    files[0],
                     value,
                     snappath=args.snappath,
                     boxsize=args.boxsize,
@@ -381,21 +443,6 @@ if __name__ == "__main__":
                     redo=args.redo,
                     vrange=None,
                 )
-                if n_snaps > 0:
-                    files = files[1:]
-                else:
-                    print("---FINISHED PLOTTING SNAPSHOTS---")
-                    if args.makemovie:
-                        for value in args.values:
-                            mov = make_movie(
-                                value,
-                                snapbase=args.input,
-                                pngpath=args.savepath,
-                                fileformat=args.fileformat,
-                                framerate=args.framerate,
-                            )
-                            print("Created movie %s" % mov)
-                    sys.exit()
             vranges.append(
                 tuple(
                     np.genfromtxt(os.path.join(args.savepath, "vrange_%s.txt" % value))
@@ -405,8 +452,6 @@ if __name__ == "__main__":
         vranges = None
 
     vranges = comm.bcast(vranges, root=0)
-    files = comm.bcast(files, root=0)
-    n_snaps = comm.bcast(n_snaps, root=0)
 
     comm.Barrier()
     if comm.Get_size() > n_snaps:
@@ -417,7 +462,7 @@ if __name__ == "__main__":
             for file in files:
                 print("Plotting snapshot %s" % file)
                 for i, value in enumerate(args.values):
-                    main(
+                    main_sequential(
                         file,
                         value,
                         snappath=args.snappath,
@@ -431,7 +476,7 @@ if __name__ == "__main__":
                     )
     else:
         for i, value in enumerate(args.values):
-            main(
+            main_parallel(
                 files,
                 value,
                 snappath=args.snappath,
