@@ -339,6 +339,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    comm = MPI.COMM_WORLD
+
     if is_master():
         if not os.path.exists(args.snappath):
             sys.exit("Specified directory does not exist! Aborting...")
