@@ -193,89 +193,126 @@ def velocity_profile(
             numthreads=numthreads,
         )
     )
-    vel_profile = np.sqrt(
+    vel_profile_pos = np.sqrt(
         vel_profile[0, midpoint, midpoint:, midpoint] ** 2
         + vel_profile[1, midpoint, midpoint:, midpoint] ** 2
         + vel_profile[2, midpoint, midpoint:, midpoint] ** 2
     )
 
-    mass_profile = np.array(
-        snapshot.mapOnCartGrid(
-            "mass",
+    vel_profile_neg = np.sqrt(
+        vel_profile[0, midpoint, :midpoint, midpoint] ** 2
+        + vel_profile[1, midpoint, :midpoint, midpoint] ** 2
+        + vel_profile[2, midpoint, :midpoint, midpoint] ** 2
+    )
+
+    species_profiles_pos = []
+    species_profiles_neg = []
+    for s in max_species:
+        cart = mapOnCartGridNuc(
+            snapshot,
+            "xnuc",
+            s,
             box=[boxsize, boxsize, boxsize],
             center=snapshot.centerofmass(),
             res=resolution,
             numthreads=numthreads,
         )
-    )
-    species_profiles = []
-    for s in max_species:
-        species_profiles.append(
-            np.array(
-                mapOnCartGridNuc(
-                    snapshot,
-                    "xnuc",
-                    s,
-                    box=[boxsize, boxsize, boxsize],
-                    center=snapshot.centerofmass(),
-                    res=resolution,
-                    numthreads=numthreads,
-                )[midpoint, midpoint:, midpoint]
-            )
-        )
+        species_profiles_pos.append(np.array(cart[midpoint, midpoint:, midpoint]))
+        species_profiles_neg.append(np.array(cart[midpoint, :midpoint, midpoint]))
 
     # Sort profiles to velocity profile
-    mass_sorted = np.array(
-        [x for _, x in sorted(zip(vel_profile, mass_profile), key=lambda pair: pair[0])]
-    )
-    vel_sorted = np.array(
-        [x for x, _ in sorted(zip(vel_profile, mass_profile), key=lambda pair: pair[0])]
-    )
-    for i, profile in enumerate(species_profiles):
-        species_profiles[i] = np.array(
-            [x for _, x in sorted(zip(vel_profile, profile), key=lambda pair: pair[0])]
+    for i, profile in enumerate(species_profiles_pos):
+        species_profiles_pos[i] = np.array(
+            [
+                x
+                for _, x in sorted(
+                    zip(vel_profile_pos, profile), key=lambda pair: pair[0]
+                )
+            ]
         )
+    vel_pos_sorted = np.sort(vel_profile_pos)
+
+    for i, profile in enumerate(species_profiles_neg):
+        species_profiles_neg[i] = np.array(
+            [
+                x
+                for _, x in sorted(
+                    zip(vel_profile_neg, profile), key=lambda pair: pair[0]
+                )
+            ]
+        )
+    vel_neg_sorted = np.sort(vel_profile_neg)
 
     if maxvel is None:
-        maxvel = max(vel_sorted)
+        maxvel = max([max(vel_pos_sorted), max(vel_neg_sorted)])
     if minvel is None:
-        minvel = min(vel_sorted)
+        minvel = min([min(vel_pos_sorted), min(vel_neg_sorted)])
 
-    mask = np.logical_and(vel_sorted >= minvel, vel_sorted <= maxvel)
+    mask_pos = np.logical_and(vel_pos_sorted >= minvel, vel_pos_sorted <= maxvel)
+    mask_neg = np.logical_and(vel_neg_sorted >= minvel, vel_neg_sorted <= maxvel)
 
-    direction = np.dot(rotmat.T, np.array([1, 0, 0]).T)
+    direction_pos = np.dot(rotmat.T, np.array([1, 0, 0]).T)
+    direction_neg = np.dot(rotmat.T, np.array([-1, 0, 0]).T)
 
-    fig, ax = plt.subplots(1, 1, figsize=[6.4, 4.8])
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[9.8, 9.6])
 
     if scale == "log":
-        for i, profile in enumerate(species_profiles):
-            ax.semilogy(
-                vel_sorted[mask] / 1e5, profile[mask], label=species[max_species[i]]
+        for i, profile in enumerate(species_profiles_pos):
+            ax1.semilogy(
+                vel_pos_sorted[mask_pos] / 1e5,
+                profile[mask_pos],
+                label=species[max_species[i]],
             )
+        for i, profile in enumerate(species_profiles_neg):
+            ax2.semilogy(
+                vel_neg_sorted[mask_neg] / 1e5,
+                profile[mask_neg],
+                label=species[max_species[i]],
+            )
+
     elif scale == "linear":
-        for i, profile in enumerate(species_profiles):
-            ax.plot(
-                vel_sorted[mask] / 1e5, profile[mask], label=species[max_species[i]]
+        for i, profile in enumerate(species_profiles_pos):
+            ax1.plot(
+                vel_pos_sorted[mask_pos] / 1e5,
+                profile[mask_pos],
+                label=species[max_species[i]],
+            )
+        for i, profile in enumerate(species_profiles_neg):
+            ax2.plot(
+                vel_neg_sorted[mask_neg] / 1e5,
+                profile[mask_neg],
+                label=species[max_species[i]],
             )
     else:
         raise ValueError("Invalid scale")
 
-    ax.set_title(
+    ax1.set_title(
         "Velocity profile along $({:g},{:g},{:g})^T$-axis".format(
-            direction[0], direction[1], direction[2]
+            direction_pos[0], direction_pos[1], direction_pos[2]
         )
     )
-    ax.set_xlabel("Velocity (km/s)")
-    ax.set_ylabel("Mass fraction (%)")
+    ax2.set_title(
+        "Velocity profile along $({:g},{:g},{:g})^T$-axis".format(
+            direction_neg[0], direction_neg[1], direction_neg[2]
+        )
+    )
+
+    ax2.set_xlabel("Velocity (km/s)")
+    ax1.set_ylabel("Mass fraction (%)")
+    ax2.set_ylabel("Mass fraction (%)")
+    ax1.grid()
+    ax2.grid()
+
     fig.tight_layout()
-    handles, labels = ax.get_legend_handles_labels()
-    lgd = ax.legend(
+    handles, labels = ax1.get_legend_handles_labels()
+    lgd = ax1.legend(
         handles,
         labels,
         loc="upper left",
         bbox_to_anchor=(1.05, 1.05),
         title="Time = {:.2f} s".format(snapshot.time),
     )
+
     if not os.path.exists(savepath):
         print("Creating save directory...")
         os.mkdir(savepath)
