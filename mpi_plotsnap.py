@@ -197,11 +197,15 @@ def plot_snapshot(
         fig.delxes(ax[1])
         ax[0].set_position([0, 0, 1, 1])
         fig.savefig(
-            savename, dpi=600, pad_inches=0, bbox_inches="tight",
+            savename,
+            dpi=600,
+            pad_inches=0,
+            bbox_inches="tight",
         )
     else:
         fig.savefig(
-            savename, dpi=600,
+            savename,
+            dpi=600,
         )
 
     plt.close(fig)
@@ -395,7 +399,10 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
-        "--framerate", help="Framerate of movie. Default: 25.", type=int, default=25,
+        "--framerate",
+        help="Framerate of movie. Default: 25.",
+        type=int,
+        default=25,
     )
 
     args = parser.parse_args()

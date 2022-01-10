@@ -13,6 +13,7 @@ from cycler import cycler
 
 import os
 import sys
+import argparse
 
 
 def get_max_species(snapshot, numspecies=5):
@@ -160,7 +161,14 @@ def write_csvy_model(expdict, exportname, density_day, isotope_day, specieslist=
                 )
             )
 
-        f.write("".join(["\n", "---\n",]))
+        f.write(
+            "".join(
+                [
+                    "\n",
+                    "---\n",
+                ]
+            )
+        )
 
         # WRITE DATA
         datastring = ["velocity,", "density,"]
@@ -264,6 +272,8 @@ def arepo_to_tardis(
     rotmat = euler_to_rotmat(alpha, beta, gamma)
     s.rotateto(rotmat[0], dir2=rotmat[1], dir3=rotmat[2])
 
+    direction = np.dot(rotmat.T, np.array([1, 0, 0]).T)
+
     # Extract profiles along (1,0,0).T axis
     for value in values:
         if value != "xnuc":
@@ -341,9 +351,17 @@ def arepo_to_tardis(
                 specieslist.append(species_name)
                 expdict[species_name] = profile_interpolated
 
+    plt.title(
+        "Profiles along $({:g},{:g},{:g})^T$-axis".format(
+            direction[0], direction[1], direction[2]
+        )
+    )
+
     plt.legend()
     plt.savefig(
-        expname + ".pdf", bbox_inches="tight", dpi=600,
+        expname + ".pdf",
+        bbox_inches="tight",
+        dpi=600,
     )
     plt.close()
 
@@ -360,39 +378,61 @@ def arepo_to_tardis(
     n = write_csvy_model(expdict, expname + ".csvy", 0, 0, specieslist=specieslist)
 
     print("Snapshot converted to TARDIS model and saved as:\n %s" % n)
+    print(
+        "Direction: ({:g},{:g},{:g})^T-axis".format(
+            direction[0], direction[1], direction[2]
+        )
+    )
 
     return
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        snapshot = int(input("Snapshot: "))
-        alpha = 0
-        beta = 0
-    elif len(sys.argv) == 2:
-        snapshot = int(sys.argv[1])
-        alpha = 0
-        beta = 0
-        gamma = 0
-    elif len(sys.argv) == 3:
-        snapshot = int(sys.argv[1])
-        alpha = float(sys.argv[2])
-        beta = 0
-        gamma = 0
-    elif len(sys.argv) == 4:
-        snapshot = int(sys.argv[1])
-        alpha = float(sys.argv[2])
-        beta = float(sys.argv[3])
-    elif len(sys.argv) == 5:
-        snapshot = int(sys.argv[1])
-        alpha = float(sys.argv[2])
-        beta = float(sys.argv[3])
-        gamma = float(sys.argv[4])
-    else:
-        raise ValueError("Invalid number of input arguments")
+    parser = argparse.ArgumentParser()
 
-    s = gadget_readsnap(snapshot)
+    parser.add_argument(
+        "snapshot",
+        help="Snapshot for which to create velocity profile plot",
+        type=int,
+    )
+    parser.add_argument(
+        "-a",
+        "--alpha",
+        help="Euler angle alpha for rotation of desired direction to x-axis. Default: 0",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "-b",
+        "--beta",
+        help="Euler angle beta for rotation of desired direction to x-axis. Default: 0",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "-g",
+        "--gamma",
+        help="Euler angle gamma for rotation of desired direction to x-axis. Default: 0",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "-s",
+        "--shells",
+        help="Number of shells to create. Default: 5",
+        type=int,
+        default=5,
+    )
+
+    args = parser.parse_args()
+
+    s = gadget_readsnap(args.snapshot)
 
     arepo_to_tardis(
-        s, export=str(snapshot), alpha=alpha, beta=beta, gamma=gamma, shells=5
+        s,
+        export=str(args.snapshot),
+        alpha=args.alpha,
+        beta=args.beta,
+        gamma=args.gamma,
+        shells=args.shells,
     )

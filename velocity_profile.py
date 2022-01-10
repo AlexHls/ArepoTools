@@ -325,11 +325,15 @@ def velocity_profile(
         if os.path.exists(savefile):
             tryed += 1
             savefile = os.path.join(
-                savepath, "velocity_profile-(%d).%s" % (tryed, filetype),
+                savepath,
+                "velocity_profile-(%d).%s" % (tryed, filetype),
             )
         else:
             fig.savefig(
-                savefile, bbox_inches="tight", bbox_extra_artists=(lgd,), dpi=dpi,
+                savefile,
+                bbox_inches="tight",
+                bbox_extra_artists=(lgd,),
+                dpi=dpi,
             )
             saved = True
 
@@ -399,7 +403,11 @@ if __name__ == "__main__":
         default="png",
     )
     parser.add_argument(
-        "-d", "--dpi", help="DPI of saved figure. Default: 600", type=int, default=600,
+        "-d",
+        "--dpi",
+        help="DPI of saved figure. Default: 600",
+        type=int,
+        default=600,
     )
     parser.add_argument(
         "--scale",
@@ -420,10 +428,14 @@ if __name__ == "__main__":
         default=4,
     )
     parser.add_argument(
-        "--maxvel", help="Upper velocity limit for plot in cm/s.", type=float,
+        "--maxvel",
+        help="Upper velocity limit for plot in cm/s.",
+        type=float,
     )
     parser.add_argument(
-        "--minvel", help="Lower velocity limit for plot in cm/s.", type=float,
+        "--minvel",
+        help="Lower velocity limit for plot in cm/s.",
+        type=float,
     )
 
     args = parser.parse_args()
