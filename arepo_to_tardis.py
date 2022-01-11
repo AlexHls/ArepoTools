@@ -21,8 +21,8 @@ def get_max_species(snapshot, numspecies=5):
     maxind = []
     frac = []
 
-    for i in range(s.nspecies):
-        frac.append(s.data["xnuc"][:, i].sum() / msol)
+    for i in range(snapshot.nspecies):
+        frac.append(snapshot.data["xnuc"][:, i].sum() / msol)
 
     while len(maxind) < numspecies:
         for i in range(len(frac)):
@@ -217,13 +217,14 @@ def arepo_to_tardis(
     alpha=0,
     beta=0,
     gamma=0,
-    boxsize=0.4,
+    boxsize=1e12,
     resolution=512,
     shells=50,
     speciesfile="species55.txt",
     numspecies=5,
     numthreads=4,
     export="",
+    maxradius=None,
 ):
 
     mpl.rcParams["axes.prop_cycle"] = cycler(
@@ -270,16 +271,41 @@ def arepo_to_tardis(
 
     # Rotate snapshot using Euler angles
     rotmat = euler_to_rotmat(alpha, beta, gamma)
-    s.rotateto(rotmat[0], dir2=rotmat[1], dir3=rotmat[2])
+    snapshot.rotateto(rotmat[0], dir2=rotmat[1], dir3=rotmat[2])
 
     direction = np.dot(rotmat.T, np.array([1, 0, 0]).T)
+
+    pos_map = np.array(
+        snapshot.mapOnCartGrid(
+            "pos",
+            box=[boxsize, boxsize, boxsize],
+            center=snapshot.centerofmass(),
+            res=resolution,
+            numthreads=numthreads,
+        )
+    )
+
+    com = snapshot.centerofmass()
+    pos = np.sqrt(
+        (pos_map[0, midpoint, midpoint:, midpoint] - com[0]) ** 2
+        + (pos_map[1, midpoint, midpoint:, midpoint] - com[1]) ** 2
+        + (pos_map[2, midpoint, midpoint:, midpoint] - com[2]) ** 2
+    )
+
+    x = np.sort(pos)
+
+    if maxradius is None:
+        maxradius = max(x)
+    minradius = min(x)
+
+    mask = np.logical_and(x >= minradius, x <= maxradius)
 
     # Extract profiles along (1,0,0).T axis
     for value in values:
         if value != "xnuc":
             cartesian_map = snapshot.mapOnCartGrid(
                 value,
-                box=[boxsize * rsol, boxsize * rsol, boxsize * rsol],
+                box=[boxsize, boxsize, boxsize],
                 center=snapshot.centerofmass(),
                 res=resolution,
                 numthreads=numthreads,
@@ -296,11 +322,13 @@ def arepo_to_tardis(
             else:
                 profile = profile[midpoint, midpoint:, midpoint]
 
-            x = np.arange(0, len(profile))
+            profile = np.array(
+                [x for _, x in sorted(zip(pos, profile), key=lambda pair: pair[0])]
+            )
 
-            f = interpolate.interp1d(x, profile)
+            f = interpolate.interp1d(x[mask], profile[mask])
 
-            shellpoints = np.linspace(0, max(x), shells)
+            shellpoints = np.linspace(min(x[mask]), max(x[mask]), shells)
 
             profile_interpolated = f(shellpoints)
 
@@ -310,7 +338,7 @@ def arepo_to_tardis(
                 "--",
                 label=value + "_interp",
             )
-            plt.plot(x, profile / max(profile), label=value)
+            plt.plot(x[mask], profile[mask] / max(profile), label=value)
 
             expdict[value] = profile_interpolated
 
@@ -320,7 +348,7 @@ def arepo_to_tardis(
                     snapshot,
                     value,
                     s,
-                    box=[boxsize * rsol, boxsize * rsol, boxsize * rsol],
+                    box=[boxsize, boxsize, boxsize],
                     center=snapshot.centerofmass(),
                     res=resolution,
                     numthreads=numthreads,
@@ -330,11 +358,13 @@ def arepo_to_tardis(
 
                 profile = profile[midpoint, midpoint:, midpoint]
 
-                x = np.arange(0, len(profile))
+                profile = np.array(
+                    [x for _, x in sorted(zip(pos, profile), key=lambda pair: pair[0])]
+                )
 
-                f = interpolate.interp1d(x, profile)
+                f = interpolate.interp1d(x[mask], profile[mask])
 
-                shellpoints = np.linspace(0, max(x), shells)
+                shellpoints = np.linspace(min(x[mask]), max(x[mask]), shells)
 
                 profile_interpolated = f(shellpoints)
 
@@ -346,7 +376,7 @@ def arepo_to_tardis(
                     "--",
                     label=species_name + "_interp",
                 )
-                plt.plot(x, profile, label=species_name)
+                plt.plot(x[mask], profile[mask], label=species_name)
 
                 specieslist.append(species_name)
                 expdict[species_name] = profile_interpolated
@@ -358,6 +388,8 @@ def arepo_to_tardis(
     )
 
     plt.legend()
+    plt.xlabel("Radial position (cm)")
+    plt.ylabel("Profile (arb. unit)")
     plt.savefig(
         expname + ".pdf",
         bbox_inches="tight",
@@ -423,6 +455,26 @@ if __name__ == "__main__":
         type=int,
         default=5,
     )
+    parser.add_argument(
+        "-x",
+        "--boxsize",
+        help="Size of the box (in cm) from which data is extracted. Default: 1e12",
+        type=float,
+        default=1e12,
+    )
+    parser.add_argument(
+        "-n",
+        "--numspecies",
+        help="Number of species includes. Default: 5",
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
+        "-m",
+        "--maxradius",
+        help="Maximum radius to which to build profile.",
+        type=float,
+    )
 
     args = parser.parse_args()
 
@@ -435,4 +487,7 @@ if __name__ == "__main__":
         beta=args.beta,
         gamma=args.gamma,
         shells=args.shells,
+        boxsize=args.boxsize,
+        numspecies=args.numspecies,
+        maxradius=args.maxradius,
     )
