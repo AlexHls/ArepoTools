@@ -126,6 +126,7 @@ def composition_plot(
 
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Abundance fraction")
+    ax.grid()
     fig.tight_layout()
     handles, labels = ax.get_legend_handles_labels()
     lgd = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.05, 1.05))
