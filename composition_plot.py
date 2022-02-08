@@ -180,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         "--nucleid",
-        help="List of elements to be plotted. Needs to be listed in species file. Default: ni59",
+        help="List of elements to be plotted. Needs to be listed in species file. Default: ni56",
         default="ni56",
         nargs="+",
     )

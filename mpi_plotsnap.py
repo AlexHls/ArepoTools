@@ -187,7 +187,7 @@ def plot_snapshot(
         ax[1].set_position([0.75, 0, 1, 1])
 
     ax[0].tick_params(
-        axis=u"both", which=u"both", length=0, labelbottom=False, labelleft=False
+        axis="both", which="both", length=0, labelbottom=False, labelleft=False
     )
     ax[0].yaxis.offsetText.set_visible(False)
     ax[0].xaxis.offsetText.set_visible(False)

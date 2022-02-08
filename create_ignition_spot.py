@@ -37,6 +37,7 @@ def create_ignition_spot(
     outname=None,
     eos_file=None,
     species_file=None,
+    max_ignition_energy=None,
 ):
 
     # Read snapshot
@@ -85,36 +86,67 @@ def create_ignition_spot(
     # For the num_ignition_cells cells with the smallest distance to the ignition
     # spot, set the internal energy to match the specified temperature
     min_inds = np.argsort(dist)
-
-    if max_ignition_mass is None and max_ignition_volume is None:
+    m_ign = 0
+    v_ign = 0
+    u_ign = 0
+    if (
+        max_ignition_mass is None
+        and max_ignition_volume is None
+        and max_ignition_energy is None
+    ):
         for i in range(num_ignition_cells):
             set_ignition_energy(s, eos, temp, min_inds[i])
         print("Created ignition spot with %d cells" % num_ignition_cells)
-    elif max_ignition_volume is None and max_ignition_mass is not None:
-        m_ign = 0
-        v_ign = 0
+    elif (
+        max_ignition_volume is None
+        and max_ignition_energy is None
+        and max_ignition_mass is not None
+    ):
         i = 0
         while m_ign <= max_ignition_mass:
+            u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
             m_ign += s.data["mass"][min_inds[i]]
             v_ign += s.data["vol"][min_inds[i]]
+            u_ign += s.data["u"][min_inds[i]] - u_prev
             i += 1
         print(
-            "Created ignition spot: %.2e M_sol, %.2e cm^3 with %d cells"
-            % (m_ign / msol, v_ign, i)
+            "Created ignition spot: %.2e M_sol, %.2e cm^3, %.2e erg with %d cells"
+            % (m_ign / msol, v_ign, u_ign, i)
         )
-    elif max_ignition_mass is None and max_ignition_volume is not None:
-        m_ign = 0
-        v_ign = 0
+    elif (
+        max_ignition_mass is None
+        and max_ignition_energy is None
+        and max_ignition_volume is not None
+    ):
         i = 0
         while v_ign <= max_ignition_volume:
+            u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
             m_ign += s.data["mass"][min_inds[i]]
             v_ign += s.data["vol"][min_inds[i]]
+            u_ign += s.data["u"][min_inds[i]] - u_prev
             i += 1
         print(
-            "Created ignition spot: %.2e M_sol, %.2e cm^3 with %d cells"
-            % (m_ign / msol, v_ign, i)
+            "Created ignition spot: %.2e M_sol, %.2e cm^3, %.2e erg with %d cells"
+            % (m_ign / msol, v_ign, u_ign, i)
+        )
+    elif (
+        max_ignition_mass is None
+        and max_ignition_volume is None
+        and max_ignition_energy is not None
+    ):
+        i = 0
+        while u_ign <= max_ignition_energy:
+            u_prev = s.data["u"][min_inds[i]]
+            set_ignition_energy(s, eos, temp, min_inds[i])
+            m_ign += s.data["mass"][min_inds[i]]
+            v_ign += s.data["vol"][min_inds[i]]
+            u_ign += s.data["u"][min_inds[i]] - u_prev
+            i += 1
+        print(
+            "Created ignition spot: %.2e M_sol, %.2e cm^3, %.2e erg with %d cells"
+            % (m_ign / msol, v_ign, u_ign, i)
         )
     else:
         raise AttributeError("Could not figure out which limit is set.")
@@ -129,7 +161,7 @@ def create_ignition_spot(
         data = s.data
         gadget_write_ics(outname, data, double=True, format="hdf5")
 
-    return
+    return m_ign / msol, v_ign, u_ign, i
 
 
 if __name__ == "__main__":
@@ -202,7 +234,12 @@ if __name__ == "__main__":
         help="Volume of ignition spot in cm^3. When set, --num_cells will be ignored",
         type=float,
     )
-
+    parser.add_argument(
+        "-u",
+        "--internal-energy",
+        help="Internal energy added by the ignition spot in erg. When set, --num_cells will be ignored",
+        type=float,
+    )
     args = parser.parse_args()
 
     if args.mass and args.volume:
@@ -219,6 +256,7 @@ if __name__ == "__main__":
         num_ignition_cells=args.num_cells,
         max_ignition_mass=args.mass,
         max_ignition_volume=args.volume,
+        max_ignition_energy=args.internal_energy,
         ign_rad=args.radius,
         ign_phi=args.phi,
         ign_theta=args.theta,
