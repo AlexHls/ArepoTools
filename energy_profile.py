@@ -18,6 +18,7 @@ import loaders
 
 def energy_profile(
     energyfile,
+    energy=None,
     save=None,
     filetype="png",
     dpi=600,
@@ -48,49 +49,82 @@ def energy_profile(
         ax.semilogy(
             time,
             ein[mask],
+            color="tab:blue",
             label=r"E$_\mathrm{in}$",
         )
         ax.semilogy(
             time,
             ekin[mask],
+            color="tab:orange",
             label=r"E$_\mathrm{kin}$",
         )
         ax.semilogy(
             time,
             epot[mask],
+            color="tab:green",
             label=r"E$_\mathrm{pot}$",
         )
         ax.semilogy(
             time,
             etot[mask],
+            color="tab:red",
             label=r"E$_\mathrm{tot}$",
         )
+        if energy is not None:
+            ax.semilogy(
+                time,
+                ein[mask] - energy,
+                color="tab:blue",
+                ls="--",
+                label=r"E$_\mathrm{in}$ - E$_\mathrm{ext}$",
+            )
     elif scale == "linear":
         ax.plot(
             time,
             ein[mask],
+            color="tab:blue",
             label=r"E$_\mathrm{in}$",
         )
         ax.plot(
             time,
             ekin[mask],
+            color="tab:orange",
             label=r"E$_\mathrm{kin}$",
         )
         ax.plot(
             time,
             epot[mask],
+            color="tab:green",
             label=r"E$_\mathrm{pot}$",
         )
         ax.plot(
             time,
             etot[mask],
+            color="tab:red",
             label=r"E$_\mathrm{tot}$",
         )
+        if energy is not None:
+            ax.plot(
+                time,
+                ein[mask] - energy,
+                color="tab:blue",
+                ls="--",
+                label=r"E$_\mathrm{in}$ - E$_\mathrm{ext}$",
+            )
     else:
         raise ValueError("Invalid scale")
 
+    ax.axhline(
+        y=0,
+        ls=":",
+        color="tab:gray",
+    )
+
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(r"Energy (erg$\,$s$^{-1}$)")
+
+    ax.grid()
+
     fig.tight_layout()
     handles, labels = ax.get_legend_handles_labels()
     lgd = ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.05, 1.05))
@@ -131,6 +165,12 @@ if __name__ == "__main__":
         "snappath",
         help="Path to directory containing energy.txt file. Default: output",
         default="output",
+    )
+    parser.add_argument(
+        "-e",
+        "--energy",
+        help="Energy added externally (e.g. during creation of initial conditions)",
+        type=float,
     )
     parser.add_argument(
         "-s",
@@ -174,6 +214,7 @@ if __name__ == "__main__":
 
     energy_profile(
         energyfile,
+        energy=args.energy,
         save=args.save,
         filetype=args.filetype,
         dpi=args.dpi,
