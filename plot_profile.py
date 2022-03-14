@@ -587,7 +587,7 @@ class Profile:
 
         return fig
 
-    def rebin(self, nshells, statistic="mean"):
+    def rebin(self, nshells, mode="vel_vs_abundance", statistic="mean"):
         """
         Rebins the data to nshells. Uses the scipy.stats.binned_statistic
         to bin the data. The standard deviation of each bin can be obtained
@@ -595,6 +595,9 @@ class Profile:
 
         Parameters
         -----
+        mode : str
+            Plotting mode. Allowed values: ["vel_vs_abundance", "vel_vs_pos"].
+            Default: "vel_vs_abundance"
         nshells : int
             Number of bins of new data.
         statistic : str
@@ -605,53 +608,102 @@ class Profile:
         self : Profile object
 
         """
-
-        self.vel_prof_p, bins_p = stats.binned_statistic(
-            self.pos_prof_p,
-            self.vel_prof_p,
-            statistic=statistic,
-            bins=nshells,
-        )[:2]
-        self.vel_prof_n, bins_n = stats.binned_statistic(
-            self.pos_prof_n,
-            self.vel_prof_n,
-            statistic=statistic,
-            bins=nshells,
-        )[:2]
-
-        self.rho_prof_p = stats.binned_statistic(
-            self.pos_prof_p,
-            self.rho_prof_p,
-            statistic=statistic,
-            bins=nshells,
-        )[0]
-        self.rho_prof_n = stats.binned_statistic(
-            self.pos_prof_n,
-            self.rho_prof_n,
-            statistic=statistic,
-            bins=nshells,
-        )[0]
-
-        for spec in self.species:
-            self.xnuc_prof_p[spec] = stats.binned_statistic(
+        if mode == "vel_vs_pos":
+            self.vel_prof_p, bins_p = stats.binned_statistic(
                 self.pos_prof_p,
-                self.xnuc_prof_p[spec],
+                self.vel_prof_p,
+                statistic=statistic,
+                bins=nshells,
+            )[:2]
+            self.vel_prof_n, bins_n = stats.binned_statistic(
+                self.pos_prof_n,
+                self.vel_prof_n,
+                statistic=statistic,
+                bins=nshells,
+            )[:2]
+
+            self.rho_prof_p = stats.binned_statistic(
+                self.pos_prof_p,
+                self.rho_prof_p,
                 statistic=statistic,
                 bins=nshells,
             )[0]
-            self.xnuc_prof_n[spec] = stats.binned_statistic(
+            self.rho_prof_n = stats.binned_statistic(
                 self.pos_prof_n,
-                self.xnuc_prof_n[spec],
+                self.rho_prof_n,
                 statistic=statistic,
                 bins=nshells,
             )[0]
 
-        self.pos_prof_p = np.array(
-            [(bins_p[i] + bins_p[i + 1]) / 2 for i in range(len(bins_p) - 1)]
-        )
-        self.pos_prof_n = np.array(
-            [(bins_n[i] + bins_n[i + 1]) / 2 for i in range(len(bins_n) - 1)]
-        )
+            for spec in self.species:
+                self.xnuc_prof_p[spec] = stats.binned_statistic(
+                    self.pos_prof_p,
+                    self.xnuc_prof_p[spec],
+                    statistic=statistic,
+                    bins=nshells,
+                )[0]
+                self.xnuc_prof_n[spec] = stats.binned_statistic(
+                    self.pos_prof_n,
+                    self.xnuc_prof_n[spec],
+                    statistic=statistic,
+                    bins=nshells,
+                )[0]
+
+            self.pos_prof_p = np.array(
+                [(bins_p[i] + bins_p[i + 1]) / 2 for i in range(len(bins_p) - 1)]
+            )
+            self.pos_prof_n = np.array(
+                [(bins_n[i] + bins_n[i + 1]) / 2 for i in range(len(bins_n) - 1)]
+            )
+        elif mode == "vel_vs_abundance":
+            self.pos_prof_p, bins_p = stats.binned_statistic(
+                self.vel_prof_p,
+                self.pos_prof_p,
+                statistic=statistic,
+                bins=nshells,
+            )[:2]
+            self.pos_prof_n, bins_n = stats.binned_statistic(
+                self.vel_prof_n,
+                self.pos_prof_n,
+                statistic=statistic,
+                bins=nshells,
+            )[:2]
+
+            self.rho_prof_p = stats.binned_statistic(
+                self.vel_prof_p,
+                self.rho_prof_p,
+                statistic=statistic,
+                bins=nshells,
+            )[0]
+            self.rho_prof_n = stats.binned_statistic(
+                self.vel_prof_n,
+                self.rho_prof_n,
+                statistic=statistic,
+                bins=nshells,
+            )[0]
+
+            for spec in self.species:
+                self.xnuc_prof_p[spec] = stats.binned_statistic(
+                    self.vel_prof_p,
+                    self.xnuc_prof_p[spec],
+                    statistic=statistic,
+                    bins=nshells,
+                )[0]
+                self.xnuc_prof_n[spec] = stats.binned_statistic(
+                    self.vel_prof_n,
+                    self.xnuc_prof_n[spec],
+                    statistic=statistic,
+                    bins=nshells,
+                )[0]
+
+            self.vel_prof_p = np.array(
+                [(bins_p[i] + bins_p[i + 1]) / 2 for i in range(len(bins_p) - 1)]
+            )
+            self.vel_prof_n = np.array(
+                [(bins_n[i] + bins_n[i + 1]) / 2 for i in range(len(bins_n) - 1)]
+            )
+        else:
+            raise ValueError("Unregognised mode: %s" % mode)
 
         return self
 
@@ -1120,6 +1172,7 @@ if __name__ == "__main__":
         )
 
     if args.plot_rebinned:
+        profile.rebin(args.nshells, mode=args.plotting_mode)
         profile.plot_profile(
             mode=args.plotting_mode, save=args.plot_rebinned, dpi=args.dpi
         )
