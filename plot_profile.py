@@ -574,7 +574,7 @@ class Profile:
         ylim2 = ax2.get_ylim()
 
         xlim = [min([xlim1[0], xlim2[0]]), max([xlim1[1], xlim2[1]])]
-        ylim = [min([ylim1[0], ylim2[0]], max([ylim1[1], ylim2[1]]))]
+        ylim = [min([ylim1[0], ylim2[0]]), max([ylim1[1], ylim2[1]])]
 
         ax1.set_xlim(xlim)
         ax1.set_ylim(ylim)
