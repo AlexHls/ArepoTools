@@ -313,7 +313,20 @@ class Profile:
         self.xnuc_prof_p = {}
         self.xnuc_prof_n = {}
 
-    def _sort_profile(self, outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode="vel_vs_abundance"):
+    def _sort_profile(
+        self,
+        outer_radius,
+        inner_radius,
+        pos_p,
+        pos_n,
+        rho_p,
+        rho_n,
+        vel_p,
+        vel_n,
+        spec_p,
+        spec_n,
+        mode="vel_vs_abundance",
+    ):
         """
         Helper funciton to sort profiles
 
@@ -327,7 +340,7 @@ class Profile:
         -----
         mask_p, mask_n
         """
-        if mode=="vel_vs_pos":
+        if mode == "vel_vs_pos":
             self.pos_prof_p = np.sort(pos_p)
             self.pos_prof_n = np.sort(pos_n)
 
@@ -389,7 +402,7 @@ class Profile:
 
             self.pos_prof_p = self.pos_prof_p[mask_p]
             self.pos_prof_n = self.pos_prof_n[mask_n]
-        elif mode=="vel_vs_abundance":
+        elif mode == "vel_vs_abundance":
             self.vel_prof_p = np.sort(vel_p)
             self.vel_prof_n = np.sort(vel_n)
 
@@ -416,7 +429,6 @@ class Profile:
 
             if not mask_p.any() or not mask_n.any():
                 raise ValueError("No points left between inner and outer radius.")
-
 
             self.rho_prof_p = np.array(
                 [x for _, x in sorted(zip(vel_p, rho_p), key=lambda pair: pair[0])]
@@ -685,7 +697,7 @@ class LineProfile(Profile):
             Can be given either as radius or velocity depending on the mode.
             Default: None
         outer_radius : float
-            Outer radius where the profiles will be cut off. 
+            Outer radius where the profiles will be cut off.
             Can be given either as radius or velocity depending on the mode.
             Default: None
         show_plot : bool
@@ -737,7 +749,19 @@ class LineProfile(Profile):
             spec_p[spec] = self.xnuc[spec][midpoint, midpoint:, midpoint]
             spec_n[spec] = self.xnuc[spec][midpoint, :midpoint, midpoint]
 
-        self._sort_profile(outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode=mode)
+        self._sort_profile(
+            outer_radius,
+            inner_radius,
+            pos_p,
+            pos_n,
+            rho_p,
+            rho_n,
+            vel_p,
+            vel_n,
+            spec_p,
+            spec_n,
+            mode=mode,
+        )
         if show_plot:
             self.plot_profile(save=save_plot, dpi=plot_dpi)
 
@@ -777,7 +801,7 @@ class ConeProfile(Profile):
             Can be given either as radius or velocity depending on the mode.
             Default: None
         outer_radius : float
-            Outer radius where the profiles will be cut off. 
+            Outer radius where the profiles will be cut off.
             Can be given either as radius or velocity depending on the mode.
             Default: None
         show_plot : bool
@@ -843,8 +867,20 @@ class ConeProfile(Profile):
         for spec in self.species:
             spec_p[spec] = self.xnuc[spec][cmask_p]
             spec_n[spec] = self.xnuc[spec][cmask_n]
-        
-        self._sort_profile(outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode=mode)
+
+        self._sort_profile(
+            outer_radius,
+            inner_radius,
+            pos_p,
+            pos_n,
+            rho_p,
+            rho_n,
+            vel_p,
+            vel_n,
+            spec_p,
+            spec_n,
+            mode=mode,
+        )
 
         if show_plot:
             self.plot_profile(save=save_plot, dpi=plot_dpi)
@@ -882,7 +918,7 @@ class FullProfile(Profile):
             Can be given either as radius or velocity depending on the mode.
             Default: None
         outer_radius : float
-            Outer radius where the profiles will be cut off. 
+            Outer radius where the profiles will be cut off.
             Can be given either as radius or velocity depending on the mode.
             Default: None
         show_plot : bool
@@ -923,7 +959,19 @@ class FullProfile(Profile):
             spec_p[spec] = self.xnuc[spec].flatten()
             spec_n[spec] = self.xnuc[spec].flatten()
 
-        self._sort_profile(outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode=mode)
+        self._sort_profile(
+            outer_radius,
+            inner_radius,
+            pos_p,
+            pos_n,
+            rho_p,
+            rho_n,
+            vel_p,
+            vel_n,
+            spec_p,
+            spec_n,
+            mode=mode,
+        )
 
         if show_plot:
             self.plot_profile(save=save_plot, dpi=plot_dpi)
