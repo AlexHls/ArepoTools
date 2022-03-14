@@ -952,10 +952,6 @@ if __name__ == "__main__":
         help="Snapshot file for which to create velocity profile plot",
     )
     parser.add_argument(
-        "save",
-        help="Filename of exported .csvy file",
-    )
-    parser.add_argument(
         "-a",
         "--alpha",
         help="Euler angle alpha for rotation of desired direction to x-axis. Default: 0",
