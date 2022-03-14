@@ -313,6 +313,150 @@ class Profile:
         self.xnuc_prof_p = {}
         self.xnuc_prof_n = {}
 
+    def _sort_profile(self, outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode="vel_vs_abundance"):
+        """
+        Helper funciton to sort profiles
+
+        Parameters
+        -----
+        mode : str
+            Plotting mode. Allowed values: ["vel_vs_abundance", "vel_vs_pos"].
+            Default: "vel_vs_abundance"
+
+        Returns
+        -----
+        mask_p, mask_n
+        """
+        if mode=="vel_vs_pos":
+            self.pos_prof_p = np.sort(pos_p)
+            self.pos_prof_n = np.sort(pos_n)
+
+            if outer_radius is None:
+                maxradius_p = max(self.pos_prof_p)
+                maxradius_n = max(self.pos_prof_n)
+            else:
+                maxradius_p = outer_radius
+                maxradius_n = outer_radius
+
+            if inner_radius is None:
+                minradius_p = min(self.pos_prof_p)
+                minradius_n = min(self.pos_prof_n)
+            else:
+                minradius_p = inner_radius
+                minradius_n = inner_radius
+
+            mask_p = np.logical_and(
+                self.pos_prof_p >= minradius_p, self.pos_prof_p <= maxradius_p
+            )
+            mask_n = np.logical_and(
+                self.pos_prof_n >= minradius_n, self.pos_prof_n <= maxradius_n
+            )
+
+            if not mask_p.any() or not mask_n.any():
+                raise ValueError("No points left between inner and outer radius.")
+
+            self.rho_prof_p = np.array(
+                [x for _, x in sorted(zip(pos_p, rho_p), key=lambda pair: pair[0])]
+            )[mask_p]
+            self.rho_prof_n = np.array(
+                [x for _, x in sorted(zip(pos_n, rho_n), key=lambda pair: pair[0])]
+            )[mask_n]
+
+            self.vel_prof_p = np.array(
+                [x for _, x in sorted(zip(pos_p, vel_p), key=lambda pair: pair[0])]
+            )[mask_p]
+            self.vel_prof_n = np.array(
+                [x for _, x in sorted(zip(pos_n, vel_n), key=lambda pair: pair[0])]
+            )[mask_n]
+
+            for spec in self.species:
+                self.xnuc_prof_p[spec] = np.array(
+                    [
+                        x
+                        for _, x in sorted(
+                            zip(pos_p, spec_p[spec]), key=lambda pair: pair[0]
+                        )
+                    ]
+                )[mask_p]
+                self.xnuc_prof_n[spec] = np.array(
+                    [
+                        x
+                        for _, x in sorted(
+                            zip(pos_n, spec_n[spec]), key=lambda pair: pair[0]
+                        )
+                    ]
+                )[mask_n]
+
+            self.pos_prof_p = self.pos_prof_p[mask_p]
+            self.pos_prof_n = self.pos_prof_n[mask_n]
+        elif mode=="vel_vs_abundance":
+            self.vel_prof_p = np.sort(vel_p)
+            self.vel_prof_n = np.sort(vel_n)
+
+            if outer_radius is None:
+                maxradius_p = max(self.vel_prof_p)
+                maxradius_n = max(self.vel_prof_n)
+            else:
+                maxradius_p = outer_radius
+                maxradius_n = outer_radius
+
+            if inner_radius is None:
+                minradius_p = min(self.vel_prof_p)
+                minradius_n = min(self.vel_prof_n)
+            else:
+                minradius_p = inner_radius
+                minradius_n = inner_radius
+
+            mask_p = np.logical_and(
+                self.vel_prof_p >= minradius_p, self.vel_prof_p <= maxradius_p
+            )
+            mask_n = np.logical_and(
+                self.vel_prof_n >= minradius_n, self.vel_prof_n <= maxradius_n
+            )
+
+            if not mask_p.any() or not mask_n.any():
+                raise ValueError("No points left between inner and outer radius.")
+
+
+            self.rho_prof_p = np.array(
+                [x for _, x in sorted(zip(vel_p, rho_p), key=lambda pair: pair[0])]
+            )[mask_p]
+            self.rho_prof_n = np.array(
+                [x for _, x in sorted(zip(vel_n, rho_n), key=lambda pair: pair[0])]
+            )[mask_n]
+
+            self.pos_prof_p = np.array(
+                [x for _, x in sorted(zip(vel_p, pos_p), key=lambda pair: pair[0])]
+            )[mask_p]
+            self.pos_prof_n = np.array(
+                [x for _, x in sorted(zip(vel_n, pos_n), key=lambda pair: pair[0])]
+            )[mask_n]
+
+            for spec in self.species:
+                self.xnuc_prof_p[spec] = np.array(
+                    [
+                        x
+                        for _, x in sorted(
+                            zip(vel_p, spec_p[spec]), key=lambda pair: pair[0]
+                        )
+                    ]
+                )[mask_p]
+                self.xnuc_prof_n[spec] = np.array(
+                    [
+                        x
+                        for _, x in sorted(
+                            zip(vel_n, spec_n[spec]), key=lambda pair: pair[0]
+                        )
+                    ]
+                )[mask_n]
+
+            self.vel_prof_p = self.vel_prof_p[mask_p]
+            self.vel_prof_n = self.vel_prof_n[mask_n]
+        else:
+            raise ValueError("Unregognised mode: %s" % mode)
+
+        return mask_p, mask_n
+
     def plot_profile(self, mode="vel_vs_abundance", save=None, dpi=600, **kwargs):
         """
         Plots profile, both in the positive and negative direction.
@@ -537,9 +681,13 @@ class LineProfile(Profile):
             Plotting mode. Allowed values: ["vel_vs_abundance", "vel_vs_pos"].
             Default: "vel_vs_abundance"
         inner_radius : float
-            Inner radius where the profiles will be cut off. Default: None
+            Inner radius where the profiles will be cut off.
+            Can be given either as radius or velocity depending on the mode.
+            Default: None
         outer_radius : float
-            Outer radius where the profiles will be cut off. Default: None
+            Outer radius where the profiles will be cut off. 
+            Can be given either as radius or velocity depending on the mode.
+            Default: None
         show_plot : bool
             Specifies if a plot is to be shown after the creation of the
             profile. Default: True
@@ -589,106 +737,7 @@ class LineProfile(Profile):
             spec_p[spec] = self.xnuc[spec][midpoint, midpoint:, midpoint]
             spec_n[spec] = self.xnuc[spec][midpoint, :midpoint, midpoint]
 
-        self.pos_prof_p = np.sort(pos_p)
-        self.pos_prof_n = np.sort(pos_n)
-
-        if outer_radius is None:
-            maxradius_p = max(self.pos_prof_p)
-            maxradius_n = max(self.pos_prof_n)
-        else:
-            maxradius_p = outer_radius
-            maxradius_n = outer_radius
-
-        if inner_radius is None:
-            minradius_p = min(self.pos_prof_p)
-            minradius_n = min(self.pos_prof_n)
-        else:
-            minradius_p = inner_radius
-            minradius_n = inner_radius
-
-        mask_p = np.logical_and(
-            self.pos_prof_p >= minradius_p, self.pos_prof_p <= maxradius_p
-        )
-        mask_n = np.logical_and(
-            self.pos_prof_n >= minradius_n, self.pos_prof_n <= maxradius_n
-        )
-
-        if not mask_p.any() or not mask_n.any():
-            raise ValueError("No points left between inner and outer radius.")
-
-        if mode=="vel_vs_pos":
-            self.rho_prof_p = np.array(
-                [x for _, x in sorted(zip(pos_p, rho_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.rho_prof_n = np.array(
-                [x for _, x in sorted(zip(pos_n, rho_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            self.vel_prof_p = np.array(
-                [x for _, x in sorted(zip(pos_p, vel_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.vel_prof_n = np.array(
-                [x for _, x in sorted(zip(pos_n, vel_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            for spec in self.species:
-                self.xnuc_prof_p[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(pos_p, spec_p[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_p]
-                self.xnuc_prof_n[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(pos_n, spec_n[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_n]
-
-            self.pos_prof_p = self.pos_prof_p[mask_p]
-            self.pos_prof_n = self.pos_prof_n[mask_n]
-        elif mode=="vel_vs_abundance":
-            self.rho_prof_p = np.array(
-                [x for _, x in sorted(zip(vel_p, rho_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.rho_prof_n = np.array(
-                [x for _, x in sorted(zip(vel_n, rho_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            self.pos_prof_p = np.array(
-                [x for _, x in sorted(zip(vel_p, pos_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.pos_prof_n = np.array(
-                [x for _, x in sorted(zip(vel_n, pos_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            for spec in self.species:
-                self.xnuc_prof_p[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(vel_p, spec_p[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_p]
-                self.xnuc_prof_n[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(vel_n, spec_n[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_n]
-
-            self.vel_prof_p = self.vel_prof_p[mask_p]
-            self.vel_prof_n = self.vel_prof_n[mask_n]
-        else:
-            raise ValueError("Unregognised mode: %s" % mode)
-
+        self._sort_profile(outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode=mode)
         if show_plot:
             self.plot_profile(save=save_plot, dpi=plot_dpi)
 
@@ -724,9 +773,13 @@ class ConeProfile(Profile):
             data is extracted. Refers to the total opening angle, not
             the angle with respect to the x axis. Default: 20.0
         inner_radius : float
-            Inner radius where the profiles will be cut off. Default: None
+            Inner radius where the profiles will be cut off.
+            Can be given either as radius or velocity depending on the mode.
+            Default: None
         outer_radius : float
-            Outer radius where the profiles will be cut off. Default: None
+            Outer radius where the profiles will be cut off. 
+            Can be given either as radius or velocity depending on the mode.
+            Default: None
         show_plot : bool
             Specifies if a plot is to be shown after the creation of the
             profile. Default: True
@@ -790,106 +843,8 @@ class ConeProfile(Profile):
         for spec in self.species:
             spec_p[spec] = self.xnuc[spec][cmask_p]
             spec_n[spec] = self.xnuc[spec][cmask_n]
-
-        self.pos_prof_p = np.sort(pos_p)
-        self.pos_prof_n = np.sort(pos_n)
-
-        if outer_radius is None:
-            maxradius_p = max(self.pos_prof_p)
-            maxradius_n = max(self.pos_prof_n)
-        else:
-            maxradius_p = outer_radius
-            maxradius_n = outer_radius
-
-        if inner_radius is None:
-            minradius_p = min(self.pos_prof_p)
-            minradius_n = min(self.pos_prof_n)
-        else:
-            minradius_p = inner_radius
-            minradius_n = inner_radius
-
-        mask_p = np.logical_and(
-            self.pos_prof_p >= minradius_p, self.pos_prof_p <= maxradius_p
-        )
-        mask_n = np.logical_and(
-            self.pos_prof_n >= minradius_n, self.pos_prof_n <= maxradius_n
-        )
-
-        if not mask_p.any() or not mask_n.any():
-            raise ValueError("No points left between inner and outer radius.")
         
-        if mode=="vel_vs_pos":
-            self.rho_prof_p = np.array(
-                [x for _, x in sorted(zip(pos_p, rho_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.rho_prof_n = np.array(
-                [x for _, x in sorted(zip(pos_n, rho_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            self.vel_prof_p = np.array(
-                [x for _, x in sorted(zip(pos_p, vel_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.vel_prof_n = np.array(
-                [x for _, x in sorted(zip(pos_n, vel_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            for spec in self.species:
-                self.xnuc_prof_p[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(pos_p, spec_p[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_p]
-                self.xnuc_prof_n[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(pos_n, spec_n[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_n]
-
-            self.pos_prof_p = self.pos_prof_p[mask_p]
-            self.pos_prof_n = self.pos_prof_n[mask_n]
-        elif mode=="vel_vs_abundance":
-            self.rho_prof_p = np.array(
-                [x for _, x in sorted(zip(vel_p, rho_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.rho_prof_n = np.array(
-                [x for _, x in sorted(zip(vel_n, rho_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            self.pos_prof_p = np.array(
-                [x for _, x in sorted(zip(vel_p, pos_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.pos_prof_n = np.array(
-                [x for _, x in sorted(zip(vel_n, pos_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            for spec in self.species:
-                self.xnuc_prof_p[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(vel_p, spec_p[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_p]
-                self.xnuc_prof_n[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(vel_n, spec_n[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_n]
-
-            self.vel_prof_p = self.vel_prof_p[mask_p]
-            self.vel_prof_n = self.vel_prof_n[mask_n]
-        else:
-            raise ValueError("Unregognised mode: %s" % mode)
+        self._sort_profile(outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode=mode)
 
         if show_plot:
             self.plot_profile(save=save_plot, dpi=plot_dpi)
@@ -923,9 +878,13 @@ class FullProfile(Profile):
             Plotting mode. Allowed values: ["vel_vs_abundance", "vel_vs_pos"].
             Default: "vel_vs_abundance"
         inner_radius : float
-            Inner radius where the profiles will be cut off. Default: None
+            Inner radius where the profiles will be cut off.
+            Can be given either as radius or velocity depending on the mode.
+            Default: None
         outer_radius : float
-            Outer radius where the profiles will be cut off. Default: None
+            Outer radius where the profiles will be cut off. 
+            Can be given either as radius or velocity depending on the mode.
+            Default: None
         show_plot : bool
             Specifies if a plot is to be shown after the creation of the
             profile. Default: True
@@ -964,105 +923,7 @@ class FullProfile(Profile):
             spec_p[spec] = self.xnuc[spec].flatten()
             spec_n[spec] = self.xnuc[spec].flatten()
 
-        self.pos_prof_p = np.sort(pos_p)
-        self.pos_prof_n = np.sort(pos_n)
-
-        if outer_radius is None:
-            maxradius_p = max(self.pos_prof_p)
-            maxradius_n = max(self.pos_prof_n)
-        else:
-            maxradius_p = outer_radius
-            maxradius_n = outer_radius
-
-        if inner_radius is None:
-            minradius_p = min(self.pos_prof_p)
-            minradius_n = min(self.pos_prof_n)
-        else:
-            minradius_p = inner_radius
-            minradius_n = inner_radius
-
-        mask_p = np.logical_and(
-            self.pos_prof_p >= minradius_p, self.pos_prof_p <= maxradius_p
-        )
-        mask_n = np.logical_and(
-            self.pos_prof_n >= minradius_n, self.pos_prof_n <= maxradius_n
-        )
-
-        if not mask_p.any() or not mask_n.any():
-            raise ValueError("No points left between inner and outer radius.")
-
-        if mode=="vel_vs_pos":
-            self.rho_prof_p = np.array(
-                [x for _, x in sorted(zip(pos_p, rho_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.rho_prof_n = np.array(
-                [x for _, x in sorted(zip(pos_n, rho_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            self.vel_prof_p = np.array(
-                [x for _, x in sorted(zip(pos_p, vel_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.vel_prof_n = np.array(
-                [x for _, x in sorted(zip(pos_n, vel_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            for spec in self.species:
-                self.xnuc_prof_p[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(pos_p, spec_p[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_p]
-                self.xnuc_prof_n[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(pos_n, spec_n[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_n]
-
-            self.pos_prof_p = self.pos_prof_p[mask_p]
-            self.pos_prof_n = self.pos_prof_n[mask_n]
-        elif mode=="vel_vs_abundance":
-            self.rho_prof_p = np.array(
-                [x for _, x in sorted(zip(vel_p, rho_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.rho_prof_n = np.array(
-                [x for _, x in sorted(zip(vel_n, rho_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            self.pos_prof_p = np.array(
-                [x for _, x in sorted(zip(vel_p, pos_p), key=lambda pair: pair[0])]
-            )[mask_p]
-            self.pos_prof_n = np.array(
-                [x for _, x in sorted(zip(vel_n, pos_n), key=lambda pair: pair[0])]
-            )[mask_n]
-
-            for spec in self.species:
-                self.xnuc_prof_p[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(vel_p, spec_p[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_p]
-                self.xnuc_prof_n[spec] = np.array(
-                    [
-                        x
-                        for _, x in sorted(
-                            zip(vel_n, spec_n[spec]), key=lambda pair: pair[0]
-                        )
-                    ]
-                )[mask_n]
-
-            self.vel_prof_p = self.vel_prof_p[mask_p]
-            self.vel_prof_n = self.vel_prof_n[mask_n]
-        else:
-            raise ValueError("Unregognised mode: %s" % mode)
+        self._sort_profile(outer_radius, inner_radius, pos_p, pos_n, vel_p, vel_n, spec_p, spec_n, mode=mode)
 
         if show_plot:
             self.plot_profile(save=save_plot, dpi=plot_dpi)
