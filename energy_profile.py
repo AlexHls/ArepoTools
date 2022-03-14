@@ -70,14 +70,6 @@ def energy_profile(
             color="tab:red",
             label=r"E$_\mathrm{tot}$",
         )
-        if energy is not None:
-            ax.semilogy(
-                time,
-                ein[mask] - energy,
-                color="tab:blue",
-                ls="--",
-                label=r"E$_\mathrm{in}$ - E$_\mathrm{ext}$",
-            )
     elif scale == "linear":
         ax.plot(
             time,
@@ -103,25 +95,20 @@ def energy_profile(
             color="tab:red",
             label=r"E$_\mathrm{tot}$",
         )
-        if energy is not None:
-            ax.plot(
-                time,
-                ein[mask] - energy,
-                color="tab:blue",
-                ls="--",
-                label=r"E$_\mathrm{in}$ - E$_\mathrm{ext}$",
-            )
     else:
         raise ValueError("Invalid scale")
 
     ax.axhline(
         y=0,
-        ls=":",
+        ls="-.",
         color="tab:gray",
     )
 
+    if energy is not None:
+        ax.set_title("%.2e erg added externally" % energy)
+
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel(r"Energy (erg$\,$s$^{-1}$)")
+    ax.set_ylabel("Energy (erg)")
 
     ax.grid()
 
