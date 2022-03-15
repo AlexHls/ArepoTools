@@ -542,7 +542,7 @@ class Profile:
             ax2.grid()
             ax2.set_ylabel("Profile (arb. unit)")
             ax2.set_xlabel("Radial position (cm)")  # TODO astropy unit support
-            ax2.set_title("Profiles along the positive axis")
+            ax2.set_title("Profiles along the negative axis")
 
         elif mode == "vel_vs_abundance":
             for spec in self.species:
