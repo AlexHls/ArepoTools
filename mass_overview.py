@@ -14,7 +14,7 @@ import loaders
 
 
 def mass_overview(
-    file=os.path.join("output", "composition.txt"),
+    file,
     save="plots",
     eosspecies="species55.txt",
 ):
@@ -26,12 +26,6 @@ def mass_overview(
     else:
         len_f = 1
         file = np.array([file])
-
-    if isinstance(nucleid, list):
-        len_n = len(nucleid)
-    else:
-        len_n = 1
-        nucleid = np.array([nucleid])
 
     dfs = [None] * len_f
 
@@ -89,10 +83,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-f",
-        "--file",
+        "file",
         help="Filename of composition file. If multiple files are provided, all will be plotted inthe same plot. Default: output/composition.txt",
-        default=os.path.join("output", "composition.txt"),
         nargs="+",
     )
     parser.add_argument(
