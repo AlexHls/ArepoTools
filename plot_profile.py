@@ -6,6 +6,8 @@ import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+from matplotlib import cm
 import pandas as pd
 from scipy import stats
 
@@ -469,7 +471,16 @@ class Profile:
 
         return mask_p, mask_n
 
-    def plot_profile(self, mode="vel_vs_abundance", save=None, dpi=600, **kwargs):
+    def plot_profile(
+        self,
+        mode="vel_vs_abundance",
+        save=None,
+        dpi=600,
+        axes=None,
+        colors=None,
+        plot_legend=0,
+        **kwargs
+    ):
         """
         Plots profile, both in the positive and negative direction.
 
@@ -490,7 +501,11 @@ class Profile:
         """
 
         assert mode in ["vel_vs_abundance", "vel_vs_pos"], "Mode not recognised"
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[9.8, 9.6])
+        if axes is None:
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[9.8, 9.6])
+        else:
+            fig = plt.gcf()
+            ax1, ax2 = axes
 
         # Positive direction plots
         if mode == "vel_vs_pos":
@@ -506,11 +521,12 @@ class Profile:
                 label="Velocity",
                 **kwargs,
             )
-            for spec in self.species:
+            for i, spec in enumerate(self.species):
                 ax1.plot(
                     self.pos_prof_p,
                     self.xnuc_prof_p[spec],
                     label=spec.capitalize(),
+                    color=colors[i],
                     **kwargs,
                 )
 
@@ -531,11 +547,14 @@ class Profile:
                 label="Velocity",
                 **kwargs,
             )
-            for spec in self.species:
+            if colors is None:
+                colors = [None] * len(self.species)
+            for i, spec in enumerate(self.species):
                 ax2.plot(
                     self.pos_prof_n,
                     self.xnuc_prof_n[spec],
                     label=spec.capitalize(),
+                    color=colors[i],
                     **kwargs,
                 )
 
@@ -545,17 +564,22 @@ class Profile:
             ax2.set_title("Profiles along the negative axis")
 
         elif mode == "vel_vs_abundance":
-            for spec in self.species:
+            if colors is None:
+                colors = [None] * len(self.species)
+            for i, spec in enumerate(self.species):
                 ax1.plot(
                     self.vel_prof_p / 1e5,
                     self.xnuc_prof_p[spec],
                     label=spec.capitalize(),
-                    **kwargs,
+                    color=colors[i],
+                    ** kwargs,
                 )
                 ax2.plot(
                     self.vel_prof_n / 1e5,
                     self.xnuc_prof_n[spec],
                     label=spec.capitalize(),
+                    color=colors[i],
+                    **kwargs,
                 )
 
             ax1.grid()
@@ -584,13 +608,14 @@ class Profile:
         fig.tight_layout()
 
         handles, labels = ax1.get_legend_handles_labels()
-        lgd = ax1.legend(
-            handles,
-            labels,
-            loc="upper left",
-            bbox_to_anchor=(1.05, 1.05),
-            title="Time = {:.2f} s".format(self.time),
-        )
+        if plot_legend == 0:
+            lgd = ax1.legend(
+                handles,
+                labels,
+                loc="upper left",
+                bbox_to_anchor=(1.05, 1.05),
+                title="Time = {:.2f} s".format(self.time),
+            )
         if save is not None:
             plt.savefig(
                 save,
@@ -1049,7 +1074,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "snapshot",
-        help="Snapshot file for which to create velocity profile plot",
+        help="Snapshot file for which to create velocity profile plot. Multiple files can be passed.",
+        nargs="+",
     )
     parser.add_argument(
         "-a",
@@ -1147,45 +1173,103 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    snapshot = ArepoSnapshot(
-        args.snapshot,
-        args.elements,
-        args.eosspecies,
-        alpha=args.alpha,
-        beta=args.beta,
-        gamma=args.gamma,
-        boxsize=args.boxsize,
-        resolution=args.resolution,
-        numthreads=args.numthreads,
-    )
-
-    pos, vel, rho, xnuc, time = snapshot.get_grids()
-
-    if args.profile == "line":
-        profile = LineProfile(pos, vel, rho, xnuc, time)
-    elif args.profile == "cone":
-        profile = ConeProfile(pos, vel, rho, xnuc, time)
-    elif args.profile == "full":
-        profile = FullProfile(pos, vel, rho, xnuc, time)
-
-    if args.profile == "cone":
-        profile.create_profile(
-            opening_angle=args.opening_angle,
-            inner_radius=args.inner_radius,
-            outer_radius=args.outer_radius,
-            save_plot=args.save_plot,
-            plot_dpi=args.dpi,
-        )
-    else:
-        profile.create_profile(
-            inner_radius=args.inner_radius,
-            outer_radius=args.outer_radius,
-            save_plot=args.save_plot,
-            plot_dpi=args.dpi,
-        )
+    cmaps = [
+        "Blues_r",
+        "Oranges_r",
+        "Greens_r",
+        "Reds_r",
+        "Purples_r",
+        "Greys_r",
+    ]
 
     if args.plot_rebinned:
-        profile.rebin(args.nshells, mode=args.plotting_mode)
-        profile.plot_profile(
-            mode=args.plotting_mode, save=args.plot_rebinned, dpi=args.dpi
+        plot_rebinned = True
+    else:
+        plot_rebinned = False
+
+    if isinstance(args.snapshot, list):
+        len_f = len(args.snapshot)
+        color_count = np.arange(len_f)
+        norm = mpl.colors.Normalize(min(color_count), max(color_count))
+        colors = []
+        for k in range(len(args.elements)):
+            vals = np.array(norm(color_count)) * 0.5
+            colors.append(cm.get_cmap(cmaps[k % len(cmaps)])(vals))
+        
+        colors = np.swapaxes(colors, 0, 1)
+
+        fig, axes = plt.subplots(2, 1, figsize=[9.8, 9.6])
+
+        warnings.warn(
+            "Multiple files and individual plotting is not compatible. Disabling..."
+        )
+        args.save_plot = None
+        save = args.plot_rebinned
+        args.plot_rebinned = None
+        show_plot = False
+
+    else:
+        len_f = 1
+        args.snapshot = np.array([args.snapshot])
+        axes = None
+        colors = [[None]]
+        save = None
+        show_plot = True
+
+    for i, f in enumerate(args.snapshot):
+        snapshot = ArepoSnapshot(
+            f,
+            args.elements,
+            args.eosspecies,
+            alpha=args.alpha,
+            beta=args.beta,
+            gamma=args.gamma,
+            boxsize=args.boxsize,
+            resolution=args.resolution,
+            numthreads=args.numthreads,
+        )
+
+        pos, vel, rho, xnuc, time = snapshot.get_grids()
+
+        if args.profile == "line":
+            profile = LineProfile(pos, vel, rho, xnuc, time)
+        elif args.profile == "cone":
+            profile = ConeProfile(pos, vel, rho, xnuc, time)
+        elif args.profile == "full":
+            profile = FullProfile(pos, vel, rho, xnuc, time)
+
+        if args.profile == "cone":
+            profile.create_profile(
+                opening_angle=args.opening_angle,
+                inner_radius=args.inner_radius,
+                outer_radius=args.outer_radius,
+                save_plot=args.save_plot,
+                plot_dpi=args.dpi,
+                show_plot=show_plot,
+            )
+        else:
+            profile.create_profile(
+                inner_radius=args.inner_radius,
+                outer_radius=args.outer_radius,
+                save_plot=args.save_plot,
+                plot_dpi=args.dpi,
+                show_plot=show_plot,
+            )
+
+        if plot_rebinned:
+            profile.rebin(args.nshells, mode=args.plotting_mode)
+            profile.plot_profile(
+                mode=args.plotting_mode,
+                save=args.plot_rebinned,
+                dpi=args.dpi,
+                axes=axes,
+                colors=colors[i][:],
+                plot_legend=i,
+            )
+
+    if save is not None:
+        fig.savefig(
+            save,
+            bbox_inches="tight",
+            dpi=args.dpi,
         )

@@ -108,4 +108,4 @@ if __name__ == "__main__":
         eosspecies=args.eosspecies,
     )
 
-    print("Finished plotting %s" % s)
+    print("Finished listing masses %s" % s)
