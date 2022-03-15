@@ -39,7 +39,7 @@ def mass_overview(
         modelname = os.path.split(os.path.dirname(os.path.dirname(os.path.abspath(f))))[
             -1
         ]
-        if sp["count"] != self.nspecies:
+        if sp["count"] != s.nspecies:
             raise ValueError(
                 "Number of species in speciesfile (%d) and snapshot (%d) don't match."
                 % (sp["count"], s.nspecies)
@@ -48,8 +48,8 @@ def mass_overview(
         data = {}
         for j in range(s.nspecies):
             data[sp["names"][j]] = (
-                self.data["mass"][: self.nparticlesall[0]].astype("float64")
-                * self.data["xnuc"][:, j]
+                s.data["mass"][: s.nparticlesall[0]].astype("float64")
+                * s.data["xnuc"][:, j]
             ).sum() / msol
 
         dfs[i] = pd.DataFrame(data, index=[modelname])
