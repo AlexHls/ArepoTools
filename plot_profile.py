@@ -530,7 +530,7 @@ class Profile:
                     **kwargs,
                 )
 
-            ax1.grid()
+            ax1.grid(visible=True)
             ax1.set_ylabel("Profile (arb. unit)")
             ax1.set_title("Profiles along the positive axis")
 
@@ -558,7 +558,7 @@ class Profile:
                     **kwargs,
                 )
 
-            ax2.grid()
+            ax2.grid(visible=True)
             ax2.set_ylabel("Profile (arb. unit)")
             ax2.set_xlabel("Radial position (cm)")  # TODO astropy unit support
             ax2.set_title("Profiles along the negative axis")
@@ -572,7 +572,7 @@ class Profile:
                     self.xnuc_prof_p[spec],
                     label=spec.capitalize(),
                     color=colors[i],
-                    ** kwargs,
+                    **kwargs,
                 )
                 ax2.plot(
                     self.vel_prof_n / 1e5,
@@ -582,11 +582,11 @@ class Profile:
                     **kwargs,
                 )
 
-            ax1.grid()
+            ax1.grid(visible=True)
             ax1.set_ylabel("Abundance (arb. unit)")
             ax1.set_title("Profiles along the positive axis")
 
-            ax2.grid()
+            ax2.grid(visible=True)
             ax2.set_ylabel("Abundance (arb. unit)")
             ax2.set_xlabel("Radial velocity (km/s)")  # TODO astropy unit support
             ax2.set_title("Profiles along the negative axis")
@@ -1195,7 +1195,7 @@ if __name__ == "__main__":
         for k in range(len(args.elements)):
             vals = np.array(norm(color_count)) * 0.5
             colors.append(cm.get_cmap(cmaps[k % len(cmaps)])(vals))
-        
+
         colors = np.swapaxes(colors, 0, 1)
 
         fig, axes = plt.subplots(2, 1, figsize=[9.8, 9.6])
