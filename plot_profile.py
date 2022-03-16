@@ -1266,6 +1266,9 @@ if __name__ == "__main__":
                 colors=colors[i][:],
                 plot_legend=i,
             )
+            if axes is not None:
+                axes[0].grid(visible=True)
+                axes[1].grid(visible=True)
 
     if save is not None:
         fig.savefig(
