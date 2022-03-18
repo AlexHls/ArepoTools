@@ -609,18 +609,6 @@ class Profile:
             ax2.set_title("Profiles along the negative axis")
 
         # Some styling
-        xlim1 = ax1.get_xlim()
-        ylim1 = ax1.get_ylim()
-        xlim2 = ax2.get_xlim()
-        ylim2 = ax2.get_ylim()
-
-        xlim = [min([xlim1[0], xlim2[0]]), max([xlim1[1], xlim2[1]])]
-        ylim = [min([ylim1[0], ylim2[0]]), max([ylim1[1], ylim2[1]])]
-
-        ax1.set_xlim(xlim)
-        ax1.set_ylim(ylim)
-        ax2.set_xlim(xlim)
-        ax2.set_ylim(ylim)
 
         fig.tight_layout()
 
@@ -1284,6 +1272,18 @@ if __name__ == "__main__":
             if axes is not None:
                 axes[0].grid(visible=True)
                 axes[1].grid(visible=True)
+                xlim1 = axes[0].get_xlim()
+                ylim1 = axes[0].get_ylim()
+                xlim2 = axes[1].get_xlim()
+                ylim2 = axex[1].get_ylim()
+
+                xlim = [min([xlim1[0], xlim2[0]]), max([xlim1[1], xlim2[1]])]
+                ylim = [min([ylim1[0], ylim2[0]]), max([ylim1[1], ylim2[1]])]
+
+                axes[0].set_xlim(xlim)
+                axes[0].set_ylim(ylim)
+                axes[1].set_xlim(xlim)
+                axes[1].set_ylim(ylim)
 
     if save is not None:
         fig.savefig(
