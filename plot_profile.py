@@ -178,7 +178,7 @@ class ArepoSnapshot:
             self.nuc_dict = {}
 
             for i, spec in enumerate(self.species):
-                self.nuc_dict[spec] = np.array(self.s.data["xnuc"][:, i])
+                self.nuc_dict[spec] = np.array(self.s.data["xnuc"][:, self.spec_ind[i]])
 
     def nucMapOnCartGrid(
         self,
