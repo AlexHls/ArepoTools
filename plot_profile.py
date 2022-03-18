@@ -18,6 +18,7 @@ class ArepoSnapshot:
         filename,
         species,
         speciesfile,
+        mode="vel_vs_abundance",
         alpha=0.0,
         beta=0.0,
         gamma=0.0,
@@ -41,6 +42,9 @@ class ArepoSnapshot:
         speciesfile : str
             File specifying the species used in the Arepo
             simulation.
+        mode : str
+            Plotting mode. Allowed values: ["vel_vs_abundance", "vel_vs_pos"].
+            Default: "vel_vs_abundance"
         alpha : float
             Euler angle alpha for rotation of the desired line-
             of-sight to the x-axis. Only usable with snapshots.
@@ -116,52 +120,65 @@ class ArepoSnapshot:
 
         self.time = self.s.time
 
-        self.pos = np.array(
-            self.s.mapOnCartGrid(
-                "pos",
-                box=[boxsize, boxsize, boxsize],
-                center=self.s.centerofmass(),
-                res=resolution,
-                numthreads=numthreads,
-            )
-        )
-        for i in range(3):
-            self.pos[i] -= self.s.centerofmass()[i]
-
-        self.rho = np.array(
-            self.s.mapOnCartGrid(
-                "rho",
-                box=[boxsize, boxsize, boxsize],
-                center=self.s.centerofmass(),
-                res=resolution,
-                numthreads=numthreads,
-            )
-        )
-
-        self.vel = np.array(
-            self.s.mapOnCartGrid(
-                "vel",
-                box=[boxsize, boxsize, boxsize],
-                center=self.s.centerofmass(),
-                res=resolution,
-                numthreads=numthreads,
-            )
-        )
-
-        self.nuc_dict = {}
-
-        for i, spec in enumerate(self.species):
-            self.nuc_dict[spec] = np.array(
-                self.nucMapOnCartGrid(
-                    self.s,
-                    spec,
-                    self.spec_ind[i],
+        if mode != "vel_vs_abundance":
+            self.pos = np.array(
+                self.s.mapOnCartGrid(
+                    "pos",
                     box=[boxsize, boxsize, boxsize],
-                    res=resolution,
                     center=self.s.centerofmass(),
+                    res=resolution,
                     numthreads=numthreads,
                 )
             )
+            for i in range(3):
+                self.pos[i] -= self.s.centerofmass()[i]
+
+            self.rho = np.array(
+                self.s.mapOnCartGrid(
+                    "rho",
+                    box=[boxsize, boxsize, boxsize],
+                    center=self.s.centerofmass(),
+                    res=resolution,
+                    numthreads=numthreads,
+                )
+            )
+
+            self.vel = np.array(
+                self.s.mapOnCartGrid(
+                    "vel",
+                    box=[boxsize, boxsize, boxsize],
+                    center=self.s.centerofmass(),
+                    res=resolution,
+                    numthreads=numthreads,
+                )
+            )
+
+            self.nuc_dict = {}
+
+            for i, spec in enumerate(self.species):
+                self.nuc_dict[spec] = np.array(
+                    self.nucMapOnCartGrid(
+                        self.s,
+                        spec,
+                        self.spec_ind[i],
+                        box=[boxsize, boxsize, boxsize],
+                        res=resolution,
+                        center=self.s.centerofmass(),
+                        numthreads=numthreads,
+                    )
+                )
+        else:
+            self.pos = np.array(self.s.data["pos"][: self.s.nparticlesall[0]])
+            self.pos = self.pos.T
+            for i in range(3):
+                self.pos[i] -= self.s.centerofmass()[i]
+            self.rho = np.array(self.s.data["rho"])
+            self.vel = np.array(self.s.data["vel"][: self.s.nparticlesall[0]])
+            self.vel = self.vel.T
+            self.nuc_dict = {}
+
+            for i, spec in enumerate(self.species):
+                self.nuc_dict[spec] = np.array(self.s.data["xnuc"][:, i])
 
     def nucMapOnCartGrid(
         self,
@@ -1187,7 +1204,7 @@ if __name__ == "__main__":
     else:
         plot_rebinned = False
 
-    if isinstance(args.snapshot, list):
+    if isinstance(args.snapshot, list) and len(args.snapshot) > 1:
         len_f = len(args.snapshot)
         color_count = np.arange(len_f)
         norm = mpl.colors.Normalize(min(color_count), max(color_count))
@@ -1203,14 +1220,12 @@ if __name__ == "__main__":
         warnings.warn(
             "Multiple files and individual plotting is not compatible. Disabling..."
         )
-        args.save_plot = None
         save = args.plot_rebinned
         args.plot_rebinned = None
         show_plot = False
 
     else:
         len_f = 1
-        args.snapshot = np.array([args.snapshot])
         axes = None
         colors = [[None]]
         save = None
