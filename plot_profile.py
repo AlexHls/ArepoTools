@@ -1277,7 +1277,7 @@ if __name__ == "__main__":
                 xlim2 = axes[1].get_xlim()
                 ylim2 = axes[1].get_ylim()
 
-                xlim = [min([xlim1[0], xlim2[0]]), max([xlim1[1], xlim2[1]])]
+                xlim = [min([xlim1[0], xlim2[0]]), max([xlim1[1], xlim2[1], 1.0])]
                 ylim = [min([ylim1[0], ylim2[0]]), max([ylim1[1], ylim2[1]])]
 
                 axes[0].set_xlim(xlim)
