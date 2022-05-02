@@ -1,17 +1,9 @@
 #!/usr/bin/env python
 
 from const import *
-import gadget
-import loaders
-import math
 import numpy as np
-import os
 import yag
 import yann_tracer
-import pysph
-import calcGrid
-import scipy
-import decays
 import argparse
 
 
