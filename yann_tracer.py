@@ -57,4 +57,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(arepobase=args.arepobase, arepodir=args.arepodir, radioactives=radioactives)
+    main(
+        arepobase=args.arepobase, arepodir=args.arepodir, radioactives=args.radioactives
+    )
