@@ -14,6 +14,7 @@ def main(args, snapbase="snapshot"):
     base = args.base
     res = args.res
     size = args.size
+    n = args.numthreads
     exportpath = args.exportpath
 
     files = glob.glob(os.path.join(base, "%s_*hdf5" % snapbase))
@@ -24,11 +25,14 @@ def main(args, snapbase="snapshot"):
         print("Exporting snapshot [%d/%d]" % (i + 1, len(files)))
 
         s = gadget_snap.gadget_snapshot(
-            os.path.join(base, file), hdf5=True, lazy_load=True, quiet=True,
+            os.path.join(base, file),
+            hdf5=True,
+            lazy_load=True,
+            quiet=True,
         )
 
         box = size * np.array([1e10, 1e10, 1e10])
-        temperature = s.mapOnCartGrid("temp", res=res, box=box)
+        temperature = s.mapOnCartGrid("temp", res=res, box=box, numthreads=n)
         density = s.mapOnCartGrid("rho", res=res, box=box)
 
         data_dict = {
@@ -46,7 +50,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "base", help="Base path from which snapshots are read.",
+        "base",
+        help="Base path from which snapshots are read.",
     )
     parser.add_argument(
         "exportpath", help="Directory where exported data will be stored."
@@ -64,6 +69,13 @@ if __name__ == "__main__":
         type=float,
         default=1.0,
         help="Factor by which default boxsize (1e10 cm) will be multiplied. Default: 1.0",
+    )
+    parser.add_argument(
+        "-n",
+        "--numthreads",
+        type=int,
+        default=4,
+        help="Number of threads used in mapping procedure. Default: 4",
     )
 
     args = parser.parse_args()
