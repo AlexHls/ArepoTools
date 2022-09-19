@@ -33,7 +33,7 @@ def main(args, snapbase="snapshot"):
 
         box = size * np.array([1e10, 1e10, 1e10])
         temperature = s.mapOnCartGrid("temp", res=res, box=box, numthreads=n)
-        density = s.mapOnCartGrid("rho", res=res, box=box)
+        density = s.mapOnCartGrid("rho", res=res, box=box, numthreads=n)
 
         data_dict = {
             "temperature": temperature.tolist(),
