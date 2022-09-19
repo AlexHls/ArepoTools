@@ -35,7 +35,7 @@ def main(args, snapbase="snapshot"):
         density = s.mapOnCartGrid("rho", res=res, box=box, numthreads=n)
 
         np.save(
-            os.path.join(exportpath, "snapshot_%d.json" % (i + 1)),
+            os.path.join(exportpath, "snapshot_%d.npy" % (i + 1)),
             [temperature, density],
         )
 
