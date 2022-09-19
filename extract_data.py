@@ -2,7 +2,6 @@
 
 import os
 import glob
-import json
 import argparse
 
 import numpy as np
@@ -35,13 +34,10 @@ def main(args, snapbase="snapshot"):
         temperature = s.mapOnCartGrid("temp", res=res, box=box, numthreads=n)
         density = s.mapOnCartGrid("rho", res=res, box=box, numthreads=n)
 
-        data_dict = {
-            "temperature": temperature.tolist(),
-            "density": density.tolist(),
-        }
-
-        with open(os.path.join(exportpath, "snapshot_%d.json" % (i + 1)), "w") as fp:
-            json.dump(data_dict, fp)
+        np.save(
+            os.path.join(exportpath, "snapshot_%d.json" % (i + 1)),
+            [temperature, density],
+        )
 
     return
 
