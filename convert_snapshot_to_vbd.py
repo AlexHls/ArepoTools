@@ -132,7 +132,7 @@ if __name__ == "__main__":
         help="Scaling factor of temperature data. Only used for openvdb export. Default: 10000.0",
     )
     parser.add_argument(
-        "-r",
+        "-d",
         "--rhonorm",
         type=float,
         default=100.0,
