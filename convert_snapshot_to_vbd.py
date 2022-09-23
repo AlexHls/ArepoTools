@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--noopenvdb",
-        action="store_false",
+        action="store_true",
         help="If flag is given, files will not be converted to .vdb, but .npy instead.",
     )
 
