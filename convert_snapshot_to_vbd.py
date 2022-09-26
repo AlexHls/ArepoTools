@@ -33,8 +33,23 @@ def main(args, snapbase="snapshot"):
     files = np.array([os.path.basename(x) for x in files])
     files.sort()
 
+    temp_norm_base = None
+    rho_norm_base = None
+
     for i, file in enumerate(files):
         print("Converting snapshot [%d/%d]" % (i + 1, len(files)))
+
+        # Get normalisation factors
+        if i == 0:
+            s = gadget_snap.gadget_snapshot(
+                os.path.join(base, file),
+                hdf5=True,
+                lazy_load=True,
+                quiet=True,
+            )
+            temp_norm_base = np.max(s.temp)
+            rho_norm_base = np.max(s.rho)
+
         if not redo:
             if (
                 os.path.exists(
@@ -60,14 +75,21 @@ def main(args, snapbase="snapshot"):
             quiet=True,
         )
 
+        assert (
+            temp_norm_base is not None
+        ), "Something went wrong with the temperature normalisation"
+        assert (
+            rho_norm_base is not None
+        ), "Something went wrong with the density normalisation"
+
         box = size * np.array([1e10, 1e10, 1e10])
         temperature = s.mapOnCartGrid("temp", res=res, box=box, numthreads=n)
         density = s.mapOnCartGrid("rho", res=res, box=box, numthreads=n)
 
         if not noopenvdb:
             # Normalise data
-            temperature = temperature / np.max(temperature) * temp_norm
-            density = density / np.max(density) * rho_norm
+            temperature = temperature / temp_norm_base * temp_norm
+            density = density / rho_norm_base * rho_norm
 
             rho = vdb.FloatGrid()
             rho.copyFromArray(density)
