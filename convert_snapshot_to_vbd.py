@@ -20,6 +20,7 @@ def main(args, snapbase="snapshot"):
     rho_norm = args.rhonorm
     entropy_norm = 1
     redo = args.redo
+    composition = args.composition
 
     if not noopenvdb:
         try:
@@ -97,24 +98,71 @@ def main(args, snapbase="snapshot"):
 
             rho = vdb.FloatGrid()
             rho.copyFromArray(density)
-            # rho.activeVoxelCount() == density.size
             rho.name = "density"
 
             temp = vdb.FloatGrid()
             temp.copyFromArray(temperature)
-            # temp.activeVoxelCount() == temperature.size
             temp.name = "temperature"
 
-            # Write grids to a VDB file
-            vdb.write(
-                os.path.join(exportpath, "%s_%d.vdb" % (snapbase, i + 1)),
-                grids=[rho, temp],
-            )
+            if composition:
+                abundances = s.mapOnCartGrid("xnuc", res=res, box=box, numthreads=n)
+                he4 = abundances[:, 2]
+                c12 = abundances[:, 4]
+                o16 = abundances[:, 10]
+                si28 = abundances[:, 26]
+                fe56 = abundances[:, 50]
+                ni56 = abundances[:, 52]
+
+                he4_ab = vdb.FloatGrid()
+                he4_ab.copyFromArray(he4)
+                he4_ab.name = "he4"
+
+                c12_ab = vdb.FloatGrid()
+                c12_ab.copyFromArray(c12)
+                c12_ab.name = "c12"
+
+                o16_ab = vdb.FloatGrid()
+                o16_ab.copyFromArray(o16)
+                o16_ab.name = "o16"
+
+                si28_ab = vdb.FloatGrid()
+                si28_ab.copyFromArray(si28)
+                si28_ab.name = "si28"
+
+                fe56_ab = vdb.FloatGrid()
+                fe56_ab.copyFromArray(fe56)
+                fe56_ab.name = "fe56"
+
+                ni56_ab = vdb.FloatGrid()
+                ni56_ab.copyFromArray(ni56)
+                ni56_ab.name = "ni56"
+
+                vdb.write(
+                    os.path.join(exportpath, "%s_%d.vdb" % (snapbase, i + 1)),
+                    grids=[
+                        rho,
+                        temp,
+                        he4_ab,
+                        c12_ab,
+                        o16_ab,
+                        si28_ab,
+                        fe56_ab,
+                        ni56_ab,
+                    ],
+                )
+            else:
+                # Write grids to a VDB file
+                vdb.write(
+                    os.path.join(exportpath, "%s_%d.vdb" % (snapbase, i + 1)),
+                    grids=[rho, temp],
+                )
         else:
             np.save(
                 os.path.join(exportpath, "%s_%d.npy" % (snapbase, i + 1)),
                 [temperature, density],
             )
+            if composition:
+                print("ERROR: Composition not supported for .npy files")
 
     return
 
@@ -169,11 +217,15 @@ if __name__ == "__main__":
         action="store_true",
         help="If flag is given, already existing exports will be overwritten.",
     )
-
     parser.add_argument(
         "--noopenvdb",
         action="store_true",
         help="If flag is given, files will not be converted to .vdb, but .npy instead.",
+    )
+    parser.add_argument(
+        "--composition",
+        action="store_true",
+        help="If flag is given, composition of he4, c12, o16, si28, fe56, ni56 abundances will be included.",
     )
 
     args = parser.parse_args()

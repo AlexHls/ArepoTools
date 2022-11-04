@@ -26,7 +26,7 @@ def main(
 
     print("Total mass for species:")
     for j, species in enumerate(species_names):
-        mass = np.sum(yt.xnuc[:,j] * yt.masses[:]) / msol
+        mass = np.sum(yt.xnuc[:, j] * yt.masses[:]) / msol
         print("%s: %.4f Msol" % (species, mass))
 
     return
