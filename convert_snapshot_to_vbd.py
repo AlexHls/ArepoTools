@@ -106,12 +106,12 @@ def main(args, snapbase="snapshot"):
 
             if composition:
                 abundances = s.mapOnCartGrid("xnuc", res=res, box=box, numthreads=n)
-                he4 = abundances[:, 2]
-                c12 = abundances[:, 4]
-                o16 = abundances[:, 10]
-                si28 = abundances[:, 26]
-                fe56 = abundances[:, 50]
-                ni56 = abundances[:, 52]
+                he4 = abundances[2, :]
+                c12 = abundances[4, :]
+                o16 = abundances[10, :]
+                si28 = abundances[26, :]
+                fe56 = abundances[50, :]
+                ni56 = abundances[52, :]
 
                 he4_ab = vdb.FloatGrid()
                 he4_ab.copyFromArray(he4)
