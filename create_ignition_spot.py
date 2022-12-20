@@ -38,6 +38,7 @@ def create_ignition_spot(
     eos_file=None,
     species_file=None,
     max_ignition_energy=None,
+    passive_scalar=False,
 ):
 
     # Read snapshot
@@ -104,6 +105,9 @@ def create_ignition_spot(
     ):
         i = 0
         while m_ign <= max_ignition_mass:
+            # Skip if paticle does not have matching passive scalar
+            if passive_scalar and s.data["pass"] != 1.:
+                continue
             u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
             m_ign += s.data["mass"][min_inds[i]]
@@ -121,6 +125,9 @@ def create_ignition_spot(
     ):
         i = 0
         while v_ign <= max_ignition_volume:
+            # Skip if paticle does not have matching passive scalar
+            if passive_scalar and s.data["pass"] != 1.:
+                continue
             u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
             m_ign += s.data["mass"][min_inds[i]]
@@ -138,6 +145,9 @@ def create_ignition_spot(
     ):
         i = 0
         while u_ign <= max_ignition_energy:
+            # Skip if paticle does not have matching passive scalar
+            if passive_scalar and s.data["pass"] != 1.:
+                continue
             u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
             m_ign += s.data["mass"][min_inds[i]]
@@ -240,6 +250,11 @@ if __name__ == "__main__":
         help="Internal energy added by the ignition spot in erg. When set, --num_cells will be ignored",
         type=float,
     )
+    parser.add_argument(
+        "--passive_scalar",
+        help="If flag is given, only particles with passive scalar = 1. will be considered for ignition",
+        action="store_true",
+    )
     args = parser.parse_args()
 
     if args.mass and args.volume:
@@ -260,4 +275,5 @@ if __name__ == "__main__":
         ign_rad=args.radius,
         ign_phi=args.phi,
         ign_theta=args.theta,
+        passive_scalar=args.passive_scalar,
     )
