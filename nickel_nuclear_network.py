@@ -11,11 +11,12 @@ import numpy as np
 LAMBDA_NI56 = 1.32058219128171259987e-6
 LAMBDA_CO56 = 1.03824729028554471906e-7
 
-MSOL = 1.989e+33 # Solar mass in g
+MSOL = 1.989e33  # Solar mass in g
 
 # TODO
 # [] Adapt equations to allow for initial Co56 abundances
 # [] Include evolution of position
+
 
 def load_npy(snapshot):
     ni56 = np.zeros(5)
@@ -33,7 +34,7 @@ def load_vdb(snapshot):
         sys.exit()
 
     try:
-        ni56_grid = vdb.read(snapshot, gridname='ni56')
+        ni56_grid = vdb.read(snapshot, gridname="ni56")
     except KeyError:
         raise KeyError("Ni56 abundance not found, but is required")
     res = ni56_grid.evalActiveVoxelDim()
@@ -42,7 +43,7 @@ def load_vdb(snapshot):
     ni56_grid.copyToArray(ni56)
 
     try:
-        time = vdb.readMetadata(snapshot)['time']
+        time = vdb.readMetadata(snapshot)["time"]
     except KeyError:
         time = 0.0
     try:
@@ -61,39 +62,37 @@ def load_vdb(snapshot):
     fe56 = np.zeros_like(ni56)
 
     try:
-        vdb.read(snapshot, gridname='density').copyToArray(density)
+        vdb.read(snapshot, gridname="density").copyToArray(density)
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname='temperature').copyToArray(temp)
+        vdb.read(snapshot, gridname="temperature").copyToArray(temp)
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname='he4').copyToArray(he4)
+        vdb.read(snapshot, gridname="he4").copyToArray(he4)
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname='c12').copyToArray(c12)
+        vdb.read(snapshot, gridname="c12").copyToArray(c12)
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname='o16').copyToArray(o16)
+        vdb.read(snapshot, gridname="o16").copyToArray(o16)
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname='si28').copyToArray(si28)
+        vdb.read(snapshot, gridname="si28").copyToArray(si28)
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname='co56').copyToArray(co56)
+        vdb.read(snapshot, gridname="co56").copyToArray(co56)
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname='fe56').copyToArray(ni56)
+        vdb.read(snapshot, gridname="fe56").copyToArray(ni56)
     except KeyError:
         pass
-
-
 
     data = {
         "time": time,
@@ -126,7 +125,7 @@ def main(
 ):
     """
     Function that decays Ni56 into Co56 and Fe56. Implements a simplified
-    version of Bateman's equations as found on 
+    version of Bateman's equations as found on
     https://en.wikipedia.org/wiki/Radioactive_decay.
 
     Parameters
@@ -158,7 +157,7 @@ def main(
         data = load_vdb(snapshot)
     elif fileformat == "hdf5":
         try:
-            import gadget_snap 
+            import gadget_snap
         except ModuleNotFoundError:
             print("Cannot import gadget_snap, make sure it is installed properly.")
             sys.exit()
@@ -168,11 +167,11 @@ def main(
 
     # Set up initial data and constants for the nuclear network
     ni56_init = data["ni56"]
-    co56_init = data["co56"] # co56 isn't included in the arepo species
+    co56_init = data["co56"]  # co56 isn't included in the arepo species
     fe56_init = data["fe56"]
 
     ni56 = np.zeros_like(ni56_init)
-    co56 = np.zeros_like(co56_init) # co56 isn't included in the arepo species
+    co56 = np.zeros_like(co56_init)  # co56 isn't included in the arepo species
     fe56 = np.zeros_like(fe56_init)
 
     mass = data["density"] * data["cellvolume"]
@@ -181,19 +180,24 @@ def main(
     print(f"Initial Co56 mass: {(co56_init * mass).sum() / MSOL} Msol")
     print(f"Initial Fe56 mass: {(fe56_init * mass).sum() / MSOL} Msol")
 
-    dt = 3600* 24 * 6
+    dt = 3600 * 24 * 6
     t = 0.0
 
-    tmax = 3600* 24 * 100
+    tmax = 3600 * 24 * 100
 
     # Run the actual network
     while t < tmax:
         ni56 = ni56_init * np.exp(-LAMBDA_NI56 * t)
-        co56 = ni56_init * LAMBDA_NI56 / (LAMBDA_CO56 - LAMBDA_NI56) * (np.exp(-LAMBDA_NI56 * t) - np.exp(-LAMBDA_CO56 * t))
+        co56 = (
+            ni56_init
+            * LAMBDA_NI56
+            / (LAMBDA_CO56 - LAMBDA_NI56)
+            * (np.exp(-LAMBDA_NI56 * t) - np.exp(-LAMBDA_CO56 * t))
+        )
         fe56 = fe56_init + ni56_init * (1 - np.exp(-LAMBDA_CO56 * t))
         ni_mass = (ni56 * mass).sum() / MSOL
         co_mass = (co56 * mass).sum() / MSOL
-        fe_mass = (fe56 * mass).sum() / MSOL 
+        fe_mass = (fe56 * mass).sum() / MSOL
         print(f"Ni56 ({t/(3600* 24)}) mass: {ni_mass} Msol")
         print(f"Co56 ({t/(3600* 24)}) mass: {co_mass} Msol")
         print(f"Fe56 ({t/(3600* 24)}) mass: {fe_mass} Msol")
