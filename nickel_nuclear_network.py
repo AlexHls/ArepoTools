@@ -235,12 +235,32 @@ def cli():
         help="File format of the input snapshot. Default: vdb",
         default="vdb",
     )
+    parser.add_argument(
+        "--dt",
+        type=float,
+        default=86400,
+        help="Time step in seconds. Also sets the time between the output snaphots. Default: 86400",
+    )
+    parser.add_argument(
+        "--tmax",
+        type=float,
+        default=8640000,
+        help="Time until which nuclear network is run in seconds. Default: 8640000",
+    )
+    parser.add_argument(
+        "--dryrun",
+        action="store_true",
+        help="If flag is given, no files will be written",
+    )
 
     args = parser.parse_args()
 
     main(
         args.snapshot,
         fileformat=args.fileformat,
+        dt=args.dt,
+        tmax=args.tmax,
+        dryrun=args.dryrun,
     )
 
     return
