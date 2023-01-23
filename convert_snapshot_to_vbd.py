@@ -88,7 +88,6 @@ def main(args, snapbase="snapshot"):
         box = size * np.array([1e10, 1e10, 1e10])
         temperature = s.mapOnCartGrid("temp", res=res, box=box, numthreads=n)
         density = s.mapOnCartGrid("rho", res=res, box=box, numthreads=n)
-        mass = s.mapOnCartGrid("mass", res=res, box=box, numthreads=n)
         entropy = s.mapOnCartGrid("s", res=res, box=box, numthreads=n)
 
         if not noopenvdb:
@@ -105,14 +104,10 @@ def main(args, snapbase="snapshot"):
             temp.copyFromArray(temperature)
             temp.name = "temperature"
 
-            m = vdb.FloatGrid()
-            m.copyFromArray(mass)
-            m.name = "mass"
-
             metadata = {
                 "time": s.time,
-                "cellvolume": box[0] * box[1] * box[2] / (res**3),
                 "boxsize": box,
+                "resolution": res,
             }
 
             if composition:
@@ -153,7 +148,6 @@ def main(args, snapbase="snapshot"):
                     grids=[
                         rho,
                         temp,
-                        m,
                         he4_ab,
                         c12_ab,
                         o16_ab,
