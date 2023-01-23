@@ -104,6 +104,12 @@ def main(args, snapbase="snapshot"):
             temp.copyFromArray(temperature)
             temp.name = "temperature"
 
+            metadata = {
+                "time": s.time,
+                "cellvolume": box[0] * box[1] * box [2] / (res ** 3),
+                "boxsize": box,
+            }
+
             if composition:
                 abundances = s.mapOnCartGrid("xnuc", res=res, box=box, numthreads=n)
                 he4 = abundances[2, :]
@@ -149,6 +155,7 @@ def main(args, snapbase="snapshot"):
                         fe56_ab,
                         ni56_ab,
                     ],
+                    metadata=metadata,
                 )
             else:
                 # Write grids to a VDB file
