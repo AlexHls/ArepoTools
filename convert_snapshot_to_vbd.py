@@ -153,7 +153,7 @@ def main(args, snapbase="snapshot"):
                     grids=[
                         rho,
                         temp,
-                        mass,
+                        m,
                         he4_ab,
                         c12_ab,
                         o16_ab,
