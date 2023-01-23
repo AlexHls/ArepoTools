@@ -5,7 +5,7 @@ import sys
 import argparse
 
 import numpy as np
-
+import pyopenvdb as vdb
 
 # Decay constants, calculated from halflifes as found on e.g. Wikipedia
 LAMBDA_NI56 = 1.32058219128171259987e-6
@@ -13,32 +13,14 @@ LAMBDA_CO56 = 1.03824729028554471906e-7
 
 MSOL = 1.989e33  # Solar mass in g
 
-# TODO
-# [] Adapt equations to allow for initial Co56 abundances
-# [] Include evolution of position
-
-
-def load_npy(snapshot):
-    ni56 = np.zeros(5)
-    co56 = np.zeros(5)
-    fe56 = np.zeros(5)
-
-    return ni56, co56, fe56
-
 
 def load_vdb(snapshot):
-    try:
-        import pyopenvdb as vdb
-    except ModuleNotFoundError:
-        print("Cannot import pyopenvdb, make sure it is installed properly.")
-        sys.exit()
 
     try:
         ni56_grid = vdb.read(snapshot, gridname="ni56")
     except KeyError:
         raise KeyError("Ni56 abundance not found, but is required")
     res = ni56_grid.evalActiveVoxelDim()
-    print(res)
     ni56 = np.zeros(res)
     ni56_grid.copyToArray(ni56)
 
@@ -47,10 +29,22 @@ def load_vdb(snapshot):
     except KeyError:
         time = 0.0
     try:
-        cellvol = vdb.readMetadata(snapshot)["cellvolume"]
+        boxsize = vdb.readMetadata(snapshot)["boxsize"]
     except KeyError:
-        cellvol = 1.0
-        print("[WARNING] No cell volume found, mass values will not make sense.")
+        boxsize = np.array([1e12] * 3)
+        print("[WARNING] No boxsize found, mass values will not make sense.")
+    try:
+        res = vdb.readMetadata(snapshot)["resolution"]
+    except KeyError:
+        res = 256
+        print("[WARNING] No resolution found, mass values will not make sense.")
+    try:
+        rho_norm = vdb.readMetadata(snapshot)["density_norm"]
+    except KeyError:
+        rho_norm = 1.0
+        print(
+            "[WARNING] No density normalisation found, mass values will not make sense."
+        )
 
     density = np.zeros_like(ni56)
     temp = np.zeros_like(ni56)
@@ -90,13 +84,15 @@ def load_vdb(snapshot):
     except KeyError:
         pass
     try:
-        vdb.read(snapshot, gridname="fe56").copyToArray(ni56)
+        vdb.read(snapshot, gridname="fe56").copyToArray(fe56)
     except KeyError:
         pass
 
     data = {
         "time": time,
-        "cellvolume": cellvol,
+        "boxsize": boxsize,
+        "resolution": res,
+        "density_norm": rho_norm,
         "density": density,
         "temperature": temp,
         "he4": he4,
@@ -112,16 +108,15 @@ def load_vdb(snapshot):
 
 
 def load_hdf5(snapshot):
-    ni56 = np.zeros(5)
-    co56 = np.zeros(5)
-    fe56 = np.zeros(5)
-
-    return ni56, co56, fe56
+    raise NotImplementedError("Loading HDF5 is not yet implemented")
 
 
 def main(
     snapshot,
+    dt=86400.0,
+    tmax=8640000.0,
     fileformat="vdb",
+    dryrun=False,
 ):
     """
     Function that decays Ni56 into Co56 and Fe56. Implements a simplified
@@ -132,9 +127,17 @@ def main(
     ----------
     snapshot : str
         Path to the snapshot from which nuclear network will be run.
+    dt : float
+        Time step in seconds. Also sets the time between the output snaphots.
+        Default: 86400.0
+    tmax : float
+        Time until which nuclear network is run in seconds.
+        Default: 8640000.0
     fileformat : str
         Filetype of the snapshot. Some file types will introduce additional
-        dependencies. Default: 'npy'
+        dependencies. Default: 'vdb'
+    dryrun : bool
+        If True, output is disabled
 
     Returns
     -------
@@ -142,28 +145,15 @@ def main(
     """
 
     assert fileformat in [
-        "npy",
         "vdb",
         "hdf5",
-    ], "Invalid fileformat. Has to be one of ['npy', 'vdb', 'hdf5']"
+    ], "Invalid fileformat. Has to be one of ['npy', 'hdf5']"
 
     # File read in. Includes a bit more flexibility than necessary
     if fileformat == "vdb":
-        try:
-            import pyopenvdb as vdb
-        except ModuleNotFoundError:
-            print("Cannot import pyopenvdb, make sure it is installed properly.")
-            sys.exit()
         data = load_vdb(snapshot)
     elif fileformat == "hdf5":
-        try:
-            import gadget_snap
-        except ModuleNotFoundError:
-            print("Cannot import gadget_snap, make sure it is installed properly.")
-            sys.exit()
-        ni56, co56, fe56 = load_hdf5(snapshot)
-    elif fileformat == "npy":
-        ni56, co56, fe56 = load_npy(snapshot)
+        data = load_hdf5(snapshot)
 
     # Set up initial data and constants for the nuclear network
     ni56_init = data["ni56"]
@@ -174,35 +164,57 @@ def main(
     co56 = np.zeros_like(co56_init)  # co56 isn't included in the arepo species
     fe56 = np.zeros_like(fe56_init)
 
-    mass = data["density"] * data["cellvolume"]
+    mass = (
+        data["density"]
+        / data["density_norm"]  # Renormalisation of density to get actual mass values
+        * data["boxsize"][0]
+        * data["boxsize"][1]
+        * data["boxsize"][2]
+        / data["resolution"] ** 3
+    )
 
-    print(f"Initial Ni56 mass: {(ni56_init * mass).sum() / MSOL} Msol")
-    print(f"Initial Co56 mass: {(co56_init * mass).sum() / MSOL} Msol")
-    print(f"Initial Fe56 mass: {(fe56_init * mass).sum() / MSOL} Msol")
+    print("Total mass in snapshot: {:g} Msol".format(mass.sum() / MSOL))
 
-    dt = 3600 * 24 * 6
-    t = 0.0
+    print("Initial Ni56 mass: {:f} Msol".format((ni56_init * mass).sum() / MSOL))
+    print("Initial Co56 mass: {:f} Msol".format((co56_init * mass).sum() / MSOL))
+    print("Initial Fe56 mass: {:f} Msol".format((fe56_init * mass).sum() / MSOL))
 
-    tmax = 3600 * 24 * 100
+    t_0 = data["time"]
+
+    print(
+        "Running nuclear network form t_0={:.1f}s until t_max={:.1f}s".format(t_0, tmax)
+    )
 
     # Run the actual network
+
+    t = t_0
     while t < tmax:
+        t += dt
         ni56 = ni56_init * np.exp(-LAMBDA_NI56 * t)
-        co56 = (
+        co56 = ni56_init * LAMBDA_NI56 / (LAMBDA_CO56 - LAMBDA_NI56) * (
+            np.exp(-LAMBDA_NI56 * t) - np.exp(-LAMBDA_CO56 * t)
+        ) + co56_init * np.exp(-LAMBDA_CO56 * t)
+        fe56 = (
             ni56_init
-            * LAMBDA_NI56
             / (LAMBDA_CO56 - LAMBDA_NI56)
-            * (np.exp(-LAMBDA_NI56 * t) - np.exp(-LAMBDA_CO56 * t))
+            * (
+                LAMBDA_NI56 * np.exp(-LAMBDA_CO56 * t)
+                - LAMBDA_CO56 * np.exp(-LAMBDA_NI56 * t)
+            )
+            - co56_init * np.exp(-LAMBDA_CO56 * t)
+            + fe56_init
+            + co56_init
+            + ni56_init
         )
-        fe56 = fe56_init + ni56_init * (1 - np.exp(-LAMBDA_CO56 * t))
+
         ni_mass = (ni56 * mass).sum() / MSOL
         co_mass = (co56 * mass).sum() / MSOL
         fe_mass = (fe56 * mass).sum() / MSOL
-        print(f"Ni56 ({t/(3600* 24)}) mass: {ni_mass} Msol")
-        print(f"Co56 ({t/(3600* 24)}) mass: {co_mass} Msol")
-        print(f"Fe56 ({t/(3600* 24)}) mass: {fe_mass} Msol")
-        print(f"Total mass: {ni_mass + co_mass + fe_mass} Msol")
-        t = t + dt
+        print("Time: {:.1f} days".format(t / 86400))
+        print("Ni56 mass: {:g} Msol".format(ni_mass))
+        print("Co56 mass: {:g} Msol".format(co_mass))
+        print("Fe56 mass: {:g} Msol".format(fe_mass))
+        print("Total mass: {:g} Msol".format(ni_mass + co_mass * fe_mass))
 
     return
 
