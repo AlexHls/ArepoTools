@@ -106,7 +106,7 @@ def main(args, snapbase="snapshot"):
 
             metadata = {
                 "time": s.time,
-                "cellvolume": box[0] * box[1] * box [2] / (res ** 3),
+                "cellvolume": box[0] * box[1] * box[2] / (res**3),
                 "boxsize": box,
             }
 
