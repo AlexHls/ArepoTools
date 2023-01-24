@@ -2,6 +2,7 @@
 
 import os
 import sys
+import glob
 import argparse
 
 import numpy as np
@@ -111,8 +112,58 @@ def load_hdf5(snapshot):
     raise NotImplementedError("Loading HDF5 is not yet implemented")
 
 
+def write_vdb(ni56, co56, fe56, time, snapshot, outputdir=".", snapbase="snapshot_"):
+    grids, metadata = vdb.readAll(snapshot)
+
+    gridnames = {}
+    for i, grid in enumerate(grids):
+        gridnames[grid.name] = i
+
+    grids[gridnames["ni56"]].copyFromArray(ni56)
+
+    if "co56" in list(gridnames.keys()):
+        grids[gridnames["co56"]].copyFromArray(co56)
+    else:
+        co56_ab = vdb.FloatGrid()
+        co56_ab.copyFromArray(co56)
+        co56_ab.name = "co56"
+        grids.append(co56_ab)
+
+    if "fe56" in list(gridnames.keys()):
+        grids[gridnames["fe56"]].copyFromArray(fe56)
+    else:
+        fe56_ab = vdb.FloatGrid()
+        fe56_ab.copyFromArray(fe56)
+        fe56_ab.name = "fe56"
+        grids.append(fe56_ab)
+
+    metadata["time"] = time
+
+    assert (
+        sys.version_info[1] >= 9
+    ), "Python version 3.9 or later required. otherwise the 'glob' function calls need to me modified."
+
+    existing_snaps = glob.glob(snapbase + "*.vdb", root_dir=outputdir)
+
+    ind = 1
+    snapname = "%s%d.vdb" % (snapbase, ind)
+    while snapname in existing_snaps:
+        ind += 1
+        snapname = "%s%d.vdb" % (snapbase, ind)
+
+    vdb.write(
+        os.path.join(outputdir, snapname),
+        grids=grids,
+        metadata=metadata,
+    )
+
+    return snapname
+
+
 def main(
     snapshot,
+    outputdir=".",
+    snapbase="snapshot_",
     dt=86400.0,
     tmax=8640000.0,
     fileformat="vdb",
@@ -127,6 +178,12 @@ def main(
     ----------
     snapshot : str
         Path to the snapshot from which nuclear network will be run.
+    outputdir : str
+        Directory where output snapshots will be stored. If other snapshots
+        are present, snapshots will be appended to series. Default: '.'
+    snapbase: str
+        Base name of output snapshots to which snapshot number will be
+        appended. Default: 'snapbase'
     dt : float
         Time step in seconds. Also sets the time between the output snaphots.
         Default: 86400.0
@@ -186,10 +243,10 @@ def main(
     )
 
     # Run the actual network
-
     t = t_0
     while t < tmax:
         t += dt
+        # Calculate populations after decay
         ni56 = ni56_init * np.exp(-LAMBDA_NI56 * t)
         co56 = ni56_init * LAMBDA_NI56 / (LAMBDA_CO56 - LAMBDA_NI56) * (
             np.exp(-LAMBDA_NI56 * t) - np.exp(-LAMBDA_CO56 * t)
@@ -207,6 +264,7 @@ def main(
             + ni56_init
         )
 
+        # Output remaining diagnostics
         ni_mass = (ni56 * mass).sum() / MSOL
         co_mass = (co56 * mass).sum() / MSOL
         fe_mass = (fe56 * mass).sum() / MSOL
@@ -214,7 +272,16 @@ def main(
         print("Ni56 mass: {:g} Msol".format(ni_mass))
         print("Co56 mass: {:g} Msol".format(co_mass))
         print("Fe56 mass: {:g} Msol".format(fe_mass))
-        print("Total mass: {:g} Msol".format(ni_mass + co_mass * fe_mass))
+        print("Total mass: {:g} Msol".format(ni_mass + co_mass + fe_mass))
+
+        # Save new snapshots
+        if not dryrun:
+            file = write_vdb(
+                ni56, co56, fe56, t, snapshot, outputdir=outputdir, snapbase=snapbase
+            )
+            print("Output file: %s in %s" % (file, outputdir))
+
+    print("All finished!")
 
     return
 
@@ -228,6 +295,17 @@ def cli():
 
     parser.add_argument(
         "snapshot", help="Path to snapshot from which nuclear network will be run."
+    )
+    parser.add_argument(
+        "-o",
+        "--outputdir",
+        help="Directory where new snaphshots will be stored. Already existing series of snapshots will be continued. Default: '.'",
+        default=".",
+    )
+    parser.add_argument(
+        "--snapbase",
+        help="Base name of snapshots. Default: 'snapshot_'",
+        default="snapshot_",
     )
     parser.add_argument(
         "--fileformat",
@@ -257,6 +335,8 @@ def cli():
 
     main(
         args.snapshot,
+        args.outputdir,
+        args.snapbase,
         fileformat=args.fileformat,
         dt=args.dt,
         tmax=args.tmax,
