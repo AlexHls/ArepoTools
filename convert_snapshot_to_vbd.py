@@ -18,7 +18,6 @@ def main(args, snapbase="snapshot"):
     noopenvdb = args.noopenvdb
     temp_norm = args.tempnorm
     rho_norm = args.rhonorm
-    entropy_norm = 1
     redo = args.redo
     composition = args.composition
 
@@ -48,10 +47,10 @@ def main(args, snapbase="snapshot"):
                 hdf5=True,
                 lazy_load=True,
                 quiet=True,
+                loadonlytype=[0],
             )
             temp_norm_base = np.max(s.temp)
             rho_norm_base = np.max(s.rho)
-            entropy_norm_base = np.max(s.s)
 
         if not redo:
             if (
@@ -76,6 +75,7 @@ def main(args, snapbase="snapshot"):
             hdf5=True,
             lazy_load=True,
             quiet=True,
+            loadonlytype=[0],
         )
 
         assert (
@@ -88,13 +88,11 @@ def main(args, snapbase="snapshot"):
         box = size * np.array([1e10, 1e10, 1e10])
         temperature = s.mapOnCartGrid("temp", res=res, box=box, numthreads=n)
         density = s.mapOnCartGrid("rho", res=res, box=box, numthreads=n)
-        entropy = s.mapOnCartGrid("s", res=res, box=box, numthreads=n)
 
         if not noopenvdb:
             # Normalise data
             temperature = temperature / temp_norm_base * temp_norm
             density = density / rho_norm_base * rho_norm
-            entropy = entropy / entropy_norm_base * entropy_norm
 
             rho = vdb.FloatGrid()
             rho.copyFromArray(density)
@@ -103,6 +101,14 @@ def main(args, snapbase="snapshot"):
             temp = vdb.FloatGrid()
             temp.copyFromArray(temperature)
             temp.name = "temperature"
+
+            metadata = {
+                "time": s.time,
+                "boxsize": box,
+                "resolution": res,
+                "density_norm": rho_norm / rho_norm_base,
+                "temperature_norm": temp_norm / temp_norm_base,
+            }
 
             if composition:
                 abundances = s.mapOnCartGrid("xnuc", res=res, box=box, numthreads=n)
@@ -149,6 +155,7 @@ def main(args, snapbase="snapshot"):
                         fe56_ab,
                         ni56_ab,
                     ],
+                    metadata=metadata,
                 )
             else:
                 # Write grids to a VDB file
