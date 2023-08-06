@@ -16,7 +16,6 @@ MSOL = 1.989e33  # Solar mass in g
 
 
 def load_vdb(snapshot):
-
     try:
         ni56_grid = vdb.read(snapshot, gridname="ni56")
     except KeyError:
@@ -112,7 +111,17 @@ def load_hdf5(snapshot):
     raise NotImplementedError("Loading HDF5 is not yet implemented")
 
 
-def write_vdb(ni56, co56, fe56, time, snapshot, outputdir=".", snapbase="snapshot_"):
+def write_vdb(
+    ni56,
+    co56,
+    fe56,
+    density,
+    boxsize,
+    time,
+    snapshot,
+    outputdir=".",
+    snapbase="snapshot_",
+):
     grids, metadata = vdb.readAll(snapshot)
 
     gridnames = {}
@@ -137,7 +146,16 @@ def write_vdb(ni56, co56, fe56, time, snapshot, outputdir=".", snapbase="snapsho
         fe56_ab.name = "fe56"
         grids.append(fe56_ab)
 
+    if "density" in list(gridnames.keys()):
+        grids[gridnames["density"]].copyFromArray(density)
+    else:
+        density_grid = vdb.FloatGrid()
+        density_grid.copyFromArray(density)
+        density_grid.name = "density"
+        grids.append(density_grid)
+
     metadata["time"] = time
+    metadata["boxsize"] = boxsize
 
     assert (
         sys.version_info[1] >= 9
@@ -160,6 +178,10 @@ def write_vdb(ni56, co56, fe56, time, snapshot, outputdir=".", snapbase="snapsho
     return snapname
 
 
+def powerlaw(x):
+    return 1.0394e10 * x ** (-0.27556141)
+
+
 def main(
     snapshot,
     outputdir=".",
@@ -167,6 +189,7 @@ def main(
     dt=86400.0,
     tmax=8640000.0,
     fileformat="vdb",
+    expansion=True,
     dryrun=False,
 ):
     """
@@ -193,6 +216,8 @@ def main(
     fileformat : str
         Filetype of the snapshot. Some file types will introduce additional
         dependencies. Default: 'vdb'
+    expansion : bool
+        If True, the expansion of the ejecta is taken into account. Default: True
     dryrun : bool
         If True, output is disabled
 
@@ -274,10 +299,36 @@ def main(
         print("Fe56 mass: {:g} Msol".format(fe_mass))
         print("Total mass: {:g} Msol".format(ni_mass + co_mass + fe_mass))
 
+        # If boxsizes are not uniform skip expansion calculation
+        if not np.all(data["boxsize"] == data["boxsize"][0]):
+            expansion = False
+            print("Boxsizes are not uniform. Skipping expansion calculation.")
+
+        # Scale up boxsize using powerlaw
+        if expansion:
+            boxsize_new = powerlaw(t) * t
+            if boxsize_new < data["boxsize"]:
+                print("New boxsize smaller than initial boxsize. Ignoring.")
+                boxsize_new = data["boxsize"]
+
+        # Adjust density to match new boxsize
+        if expansion:
+            density_new = mass / (boxsize_new**3 / data["resolution"] ** 3)
+            # Normalize density
+            density_new = density_new / data["density_norm"]
+
         # Save new snapshots
         if not dryrun:
             file = write_vdb(
-                ni56, co56, fe56, t, snapshot, outputdir=outputdir, snapbase=snapbase
+                ni56,
+                co56,
+                fe56,
+                density_new,
+                boxsize_new,
+                t,
+                snapshot,
+                outputdir=outputdir,
+                snapbase=snapbase,
             )
             print("Output file: %s in %s" % (file, outputdir))
 
@@ -326,6 +377,11 @@ def cli():
         help="Time until which nuclear network is run in seconds. Default: 8640000",
     )
     parser.add_argument(
+        "--expansion",
+        action="store_true",
+        help="If flag is given, the expansion of the ejecta is taken into account. Default: False",
+    )
+    parser.add_argument(
         "--dryrun",
         action="store_true",
         help="If flag is given, no files will be written",
@@ -340,6 +396,7 @@ def cli():
         fileformat=args.fileformat,
         dt=args.dt,
         tmax=args.tmax,
+        expansion=args.expansion,
         dryrun=args.dryrun,
     )
 
