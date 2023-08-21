@@ -14,7 +14,6 @@ from const import rsol, msol
 
 
 def set_ignition_energy(snapshot, eos, temp, ind):
-
     u_new = eos.tgiven(
         np.array(snapshot.data["rho"][ind]), np.array(snapshot.data["xnuc"][ind]), temp
     )[0]
@@ -40,7 +39,6 @@ def create_ignition_spot(
     max_ignition_energy=None,
     passive_scalar=False,
 ):
-
     # Read snapshot
     if os.path.exists(file):
         s = gadget_snap.gadget_snapshot(file, hdf5=True, quiet=True, lazy_load=True)
@@ -90,6 +88,9 @@ def create_ignition_spot(
     m_ign = 0
     v_ign = 0
     u_ign = 0
+    print(
+        "Central density at the ignition spot: %.2e g/cm^3" % s.data["rho"][min_inds[0]]
+    )
     if (
         max_ignition_mass is None
         and max_ignition_volume is None
@@ -106,7 +107,7 @@ def create_ignition_spot(
         i = 0
         while m_ign <= max_ignition_mass:
             # Skip if paticle does not have matching passive scalar
-            if passive_scalar and s.data["pass"] != 1.:
+            if passive_scalar and s.data["pass"] != 1.0:
                 continue
             u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
@@ -126,7 +127,7 @@ def create_ignition_spot(
         i = 0
         while v_ign <= max_ignition_volume:
             # Skip if paticle does not have matching passive scalar
-            if passive_scalar and s.data["pass"] != 1.:
+            if passive_scalar and s.data["pass"] != 1.0:
                 continue
             u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
@@ -146,7 +147,7 @@ def create_ignition_spot(
         i = 0
         while u_ign <= max_ignition_energy:
             # Skip if paticle does not have matching passive scalar
-            if passive_scalar and s.data["pass"] != 1.:
+            if passive_scalar and s.data["pass"] != 1.0:
                 continue
             u_prev = s.data["u"][min_inds[i]]
             set_ignition_energy(s, eos, temp, min_inds[i])
@@ -175,7 +176,6 @@ def create_ignition_spot(
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
